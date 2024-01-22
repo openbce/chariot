@@ -1,21 +1,31 @@
 # xpu-operator
-// TODO(user): Add simple overview of use/purpose
+
+`xpu-operator` is an operator to manage the XPU (e.g. DPU, IPU) in Kubernetes environments;
+it provides several features to manage XPU in the cluster, e.g. provisioning, offload.
 
 ## Description
 
-![overall]()
+![overall](docs/images/xpu-operator-overall.png)
 
 ### DPUSet Controller
 
+A set of DPU, similar to Dpu, e.g. rolling update.
+
 ### DPU Controller
+
+The status of DPU, e.g. images, provisioning phase.
 
 ### Subnet Controller
 
+The configuration of subnet in Kubernetes.
+
 ### XPU Shim
+
+A shim to communicate with containerd in DPU.
 
 ### XPU device plugins
 
-
+Report information of DPUs, e.g. arm core.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
