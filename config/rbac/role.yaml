@@ -1,0 +1,84 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - networking.openbce.io
+  resources:
+  - dpus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - networking.openbce.io
+  resources:
+  - dpus/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - networking.openbce.io
+  resources:
+  - dpus/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpus
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpus/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpus/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpusets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpusets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - provisioning.openbce.io
+  resources:
+  - dpusets/status
+  verbs:
+  - get
+  - patch
+  - update

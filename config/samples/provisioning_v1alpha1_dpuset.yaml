@@ -1,0 +1,12 @@
+apiVersion: provisioning.openbce.io/v1alpha1
+kind: DpuSet
+metadata:
+  labels:
+    app.kubernetes.io/name: dpuset
+    app.kubernetes.io/instance: dpuset-sample
+    app.kubernetes.io/part-of: xpu-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: xpu-operator
+  name: dpuset-sample
+spec:
+  # TODO(user): Add fields here

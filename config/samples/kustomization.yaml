@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- provisioning_v1alpha1_dpu.yaml
+- provisioning_v1alpha1_dpuset.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
