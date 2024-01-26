@@ -4,7 +4,7 @@ Chariot is a solution built on Kubernetes to support offload pod/container for H
 
 ## Description
 
-![overall](docs/images/xpu-operator-overall.png)
+![overall](docs/images/chariot-overview.png)
 
 ### chariot-operator
 
