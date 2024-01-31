@@ -11,13 +11,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-mod rpc;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(&["protos/api.proto"], &["protos"])?;
 
-use crate::rpc::cri as crirpc;
-
-fn main() {
-    let req = crirpc::VersionRequest {
-        version: "0.1.0".to_string(),
-    };
-    println!("{}", req.version);
+    Ok(())
 }
