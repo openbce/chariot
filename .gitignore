@@ -1,6 +1,7 @@
 bin/
 .idea/
 vendor/
+.vscode/
 
 # Added by cargo
 
