@@ -10,10 +10,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+use clap::Parser;
 
-pub mod image;
-pub mod runtime;
+// use crate::cri;
 
-// The default Unix socket for Chariot shim.
-pub const DEFAULT_UNIX_SOCKET_DIR: &str = "/run/chariot";
-pub const DEFAULT_UNIX_SOCKET: &str = "/run/chariot/chariot.sock";
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct Options {
+    // The address of Unix socket for Chariot shim.
+    // #[arg(short, long, default_value=cri::DEFAULT_UNIX_SOCKET)]
+    // pub address: String,
+
+    /// The address of CRI server in XPU.
+    #[arg(short, long)]
+    pub xpu_address: String,
+}

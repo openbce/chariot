@@ -16,6 +16,9 @@ authors = ["openBCE Authors (@openbce)"]
 clap = { version = "4", features = ["derive", "env"] }
 tokio = { version = "1", features = ["full", "tracing"] }
 tonic = { version = "0.10", features = ["tls"] }
+tracing = "*"
+tracing-subscriber = { version = "*", features = ["env-filter", "local-time"] }
+
 
 tonic-build = "0.10"
 prost = "0.12"

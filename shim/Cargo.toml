@@ -6,13 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = { workspace = true}
+tonic = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
+tokio-stream = { version="0.1", features=["net"] }
 futures="0.3"
-prost = "*"
-prost-types = "*"
-prost-build = "*"
+prost = "0.12"
+prost-types = "0.12"
+prost-build = "0.12"
 async-trait = "0.1"
 
 [build-dependencies]
-tonic-build = { workspace = true}
+tonic-build = { workspace = true }
