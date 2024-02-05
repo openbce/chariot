@@ -29,9 +29,14 @@ pub struct ImageShim {
 
 impl ImageShim {
     pub async fn connect(cri_addr: String) -> Result<Self, ChariotError> {
-        let image_client = ImageServiceClient::connect(cri_addr)
+        let mut image_client = ImageServiceClient::connect(cri_addr)
             .await
             .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+
+        let _ = image_client
+            .image_fs_info(ImageFsInfoRequest {})
+            .await
+            .map_err(|e| ChariotError::CriError(e.to_string()))?;
 
         Ok(ImageShim {
             xpu_client: image_client,

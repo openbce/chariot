@@ -59,9 +59,9 @@ impl RuntimeShim {
             .map_err(|e| ChariotError::CriError(e.to_string()))?;
         let resp = version.into_inner();
 
-        info!("CRI Info: {}/{}/{}/{}", 
-            resp.runtime_api_version,
-            resp.runtime_name, resp.runtime_version, resp.version
+        info!(
+            "CRI Info: {}/{}/{}/{}",
+            resp.runtime_api_version, resp.runtime_name, resp.runtime_version, resp.version
         );
 
         Ok(RuntimeShim {
