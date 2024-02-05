@@ -10,17 +10,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-use clap::Parser;
+use thiserror::Error;
 
-// use crate::cri;
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-pub struct Options {
-    // The address of Unix socket for Chariot shim.
-    // #[arg(short, long, default_value=cri::DEFAULT_UNIX_SOCKET)]
-    // pub address: String,
-    /// The address of CRI server in XPU.
-    #[arg(short, long)]
-    pub xpu_address: String,
+#[derive(Error, Debug)]
+pub enum ChariotError {
+    #[error("{0}")]
+    NetworkError(String),
+    #[error("{0}")]
+    CriError(String),
 }

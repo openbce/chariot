@@ -13,18 +13,30 @@ limitations under the License.
 
 use tonic::transport::Channel;
 
-use crate::rpc::cri as crirpc;
-
+use self::crirpc::image_service_client::ImageServiceClient;
 use self::crirpc::{
     ImageFsInfoRequest, ImageFsInfoResponse, ImageStatusRequest, ImageStatusResponse,
     ListImagesRequest, ListImagesResponse, PullImageRequest, PullImageResponse, RemoveImageRequest,
     RemoveImageResponse,
 };
+use crate::rpc::cri as crirpc;
 
-use self::crirpc::image_service_client::ImageServiceClient;
+use crate::common::ChariotError;
 
 pub struct ImageShim {
     pub xpu_client: ImageServiceClient<Channel>,
+}
+
+impl ImageShim {
+    pub async fn connect(cri_addr: String) -> Result<Self, ChariotError> {
+        let image_client = ImageServiceClient::connect(cri_addr)
+            .await
+            .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+
+        Ok(ImageShim {
+            xpu_client: image_client,
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -34,7 +46,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<ListImagesRequest>,
     ) -> Result<tonic::Response<ListImagesResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_images(request).await
     }
 
@@ -43,7 +55,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<ImageStatusRequest>,
     ) -> Result<tonic::Response<ImageStatusResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.image_status(request).await
     }
     /// PullImage pulls an image with authentication config.
@@ -52,7 +64,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<PullImageRequest>,
     ) -> Result<tonic::Response<PullImageResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.pull_image(request).await
     }
 
@@ -61,7 +73,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<RemoveImageRequest>,
     ) -> Result<tonic::Response<RemoveImageResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.remove_image(request).await
     }
     /// ImageFSInfo returns information of the filesystem that is used to store images.
@@ -70,7 +82,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<ImageFsInfoRequest>,
     ) -> Result<tonic::Response<ImageFsInfoResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.image_fs_info(request).await
     }
 }

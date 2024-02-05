@@ -14,9 +14,9 @@ use std::pin::Pin;
 
 use futures::Stream;
 use tonic::transport::Channel;
+use tracing::info;
 
-use crate::rpc::cri as crirpc;
-
+use self::crirpc::runtime_service_client::RuntimeServiceClient;
 use self::crirpc::{
     AttachRequest, AttachResponse, CheckpointContainerRequest, CheckpointContainerResponse,
     ContainerEventResponse, ContainerStatsRequest, ContainerStatsResponse, ContainerStatusRequest,
@@ -35,11 +35,39 @@ use self::crirpc::{
     UpdateContainerResourcesRequest, UpdateContainerResourcesResponse, UpdateRuntimeConfigRequest,
     UpdateRuntimeConfigResponse, VersionRequest, VersionResponse,
 };
+use crate::rpc::cri as crirpc;
 
-use self::crirpc::runtime_service_client::RuntimeServiceClient;
+use crate::common::ChariotError;
 
 pub struct RuntimeShim {
     pub xpu_client: RuntimeServiceClient<Channel>,
+}
+
+impl RuntimeShim {
+    pub async fn connect(cri_addr: String) -> Result<Self, ChariotError> {
+        let mut runtime_client = RuntimeServiceClient::connect(cri_addr)
+            .await
+            .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+
+        let request = crirpc::VersionRequest {
+            version: "*".to_string(),
+        };
+
+        let version = runtime_client
+            .version(request)
+            .await
+            .map_err(|e| ChariotError::CriError(e.to_string()))?;
+        let resp = version.into_inner();
+
+        info!("CRI Info: {}/{}/{}/{}", 
+            resp.runtime_api_version,
+            resp.runtime_name, resp.runtime_version, resp.version
+        );
+
+        Ok(RuntimeShim {
+            xpu_client: runtime_client,
+        })
+    }
 }
 
 #[async_trait::async_trait]
@@ -49,7 +77,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<VersionRequest>,
     ) -> Result<tonic::Response<VersionResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.version(request).await
     }
 
@@ -58,7 +86,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<RunPodSandboxRequest>,
     ) -> Result<tonic::Response<RunPodSandboxResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.run_pod_sandbox(request).await
     }
 
@@ -67,7 +95,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<StopPodSandboxRequest>,
     ) -> Result<tonic::Response<StopPodSandboxResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.stop_pod_sandbox(request).await
     }
 
@@ -76,7 +104,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<RemovePodSandboxRequest>,
     ) -> Result<tonic::Response<RemovePodSandboxResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.remove_pod_sandbox(request).await
     }
 
@@ -85,7 +113,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<PodSandboxStatusRequest>,
     ) -> Result<tonic::Response<PodSandboxStatusResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.pod_sandbox_status(request).await
     }
     /// ListPodSandbox returns a list of PodSandboxes.
@@ -94,7 +122,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListPodSandboxRequest>,
     ) -> Result<tonic::Response<ListPodSandboxResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_pod_sandbox(request).await
     }
     /// CreateContainer creates a new container in specified PodSandbox
@@ -103,7 +131,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<CreateContainerRequest>,
     ) -> Result<tonic::Response<CreateContainerResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.create_container(request).await
     }
     /// StartContainer starts the container.
@@ -112,7 +140,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<StartContainerRequest>,
     ) -> Result<tonic::Response<StartContainerResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.start_container(request).await
     }
 
@@ -121,7 +149,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<StopContainerRequest>,
     ) -> Result<tonic::Response<StopContainerResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.stop_container(request).await
     }
 
@@ -130,7 +158,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<RemoveContainerRequest>,
     ) -> Result<tonic::Response<RemoveContainerResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.remove_container(request).await
     }
     /// ListContainers lists all containers by filters.
@@ -139,7 +167,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListContainersRequest>,
     ) -> Result<tonic::Response<ListContainersResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_containers(request).await
     }
 
@@ -148,7 +176,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ContainerStatusRequest>,
     ) -> Result<tonic::Response<ContainerStatusResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.container_status(request).await
     }
 
@@ -157,7 +185,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<UpdateContainerResourcesRequest>,
     ) -> Result<tonic::Response<UpdateContainerResourcesResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.update_container_resources(request).await
     }
 
@@ -166,7 +194,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ReopenContainerLogRequest>,
     ) -> Result<tonic::Response<ReopenContainerLogResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.reopen_container_log(request).await
     }
     /// ExecSync runs a command in a container synchronously.
@@ -175,7 +203,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ExecSyncRequest>,
     ) -> Result<tonic::Response<ExecSyncResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.exec_sync(request).await
     }
     /// Exec prepares a streaming endpoint to execute a command in the container.
@@ -184,7 +212,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ExecRequest>,
     ) -> Result<tonic::Response<ExecResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.exec(request).await
     }
     /// Attach prepares a streaming endpoint to attach to a running container.
@@ -193,7 +221,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<AttachRequest>,
     ) -> Result<tonic::Response<AttachResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.attach(request).await
     }
     /// PortForward prepares a streaming endpoint to forward ports from a PodSandbox.
@@ -202,7 +230,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<PortForwardRequest>,
     ) -> Result<tonic::Response<PortForwardResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.port_forward(request).await
     }
 
@@ -211,7 +239,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ContainerStatsRequest>,
     ) -> Result<tonic::Response<ContainerStatsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.container_stats(request).await
     }
     /// ListContainerStats returns stats of all running containers.
@@ -220,7 +248,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListContainerStatsRequest>,
     ) -> Result<tonic::Response<ListContainerStatsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_container_stats(request).await
     }
 
@@ -229,7 +257,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<PodSandboxStatsRequest>,
     ) -> Result<tonic::Response<PodSandboxStatsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.pod_sandbox_stats(request).await
     }
     /// ListPodSandboxStats returns stats of the pod sandboxes matching a filter.
@@ -238,7 +266,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListPodSandboxStatsRequest>,
     ) -> Result<tonic::Response<ListPodSandboxStatsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_pod_sandbox_stats(request).await
     }
     /// UpdateRuntimeConfig updates the runtime configuration based on the given request.
@@ -247,7 +275,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<UpdateRuntimeConfigRequest>,
     ) -> Result<tonic::Response<UpdateRuntimeConfigResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.update_runtime_config(request).await
     }
     /// Status returns the status of the runtime.
@@ -256,7 +284,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<StatusRequest>,
     ) -> Result<tonic::Response<StatusResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.status(request).await
     }
     /// CheckpointContainer checkpoints a container
@@ -265,7 +293,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<CheckpointContainerRequest>,
     ) -> Result<tonic::Response<CheckpointContainerResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.checkpoint_container(request).await
     }
 
@@ -285,7 +313,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListMetricDescriptorsRequest>,
     ) -> Result<tonic::Response<ListMetricDescriptorsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_metric_descriptors(request).await
     }
     /// ListPodSandboxMetrics gets pod sandbox metrics from CRI Runtime
@@ -294,7 +322,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<ListPodSandboxMetricsRequest>,
     ) -> Result<tonic::Response<ListPodSandboxMetricsResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.list_pod_sandbox_metrics(request).await
     }
 
@@ -303,7 +331,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         request: tonic::Request<RuntimeConfigRequest>,
     ) -> Result<tonic::Response<RuntimeConfigResponse>, tonic::Status> {
         let mut client = self.xpu_client.clone();
-        
+
         client.runtime_config(request).await
     }
 }

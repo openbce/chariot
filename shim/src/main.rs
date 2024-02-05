@@ -12,6 +12,7 @@ limitations under the License.
 */
 
 mod cfg;
+mod common;
 mod cri;
 mod rpc;
 
@@ -26,9 +27,7 @@ use tokio::net::UnixListener;
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 
-use crate::rpc::cri::image_service_client::ImageServiceClient;
 use crate::rpc::cri::image_service_server::ImageServiceServer;
-use crate::rpc::cri::runtime_service_client::RuntimeServiceClient;
 use crate::rpc::cri::runtime_service_server::RuntimeServiceServer;
 
 #[cfg(unix)]
@@ -41,15 +40,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let args = cfg::Options::parse();
 
-    let image_client= ImageServiceClient::connect(args.xpu_address.clone()).await?;
-    let runtime_client = RuntimeServiceClient::connect(args.xpu_address.clone()).await?;
-
-    let image_svc = cri::image::ImageShim {
-        xpu_client: image_client,
-    };
-    let runtime_svc = cri::runtime::RuntimeShim {
-        xpu_client: runtime_client,
-    };
+    let image_svc = cri::image::ImageShim::connect(args.xpu_address.clone()).await?;
+    let runtime_svc = cri::runtime::RuntimeShim::connect(args.xpu_address.clone()).await?;
 
     // TODO(k82cn): use the address from args.
     fs::create_dir_all(cri::DEFAULT_UNIX_SOCKET_DIR)?;
