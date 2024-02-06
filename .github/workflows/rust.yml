@@ -1,22 +1,43 @@
-name: Rust
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
+name: Chariot CI
+on: [push, pull_request]
 env:
-  CARGO_TERM_COLOR: always
-
+  CLICOLOR_FORCE: 1
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  ci:
+    name: Code Verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+        os: [ubuntu-latest]
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+      - name: Install cargo-make
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug cargo-make
+      - name: Install gRPC
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: check-format-ci-flow
+      - name: Cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: make
+          args: clippy-ci-flow
+      - name: Cargo test
+        run: |
+          cargo make test
