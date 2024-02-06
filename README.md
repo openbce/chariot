@@ -1,5 +1,10 @@
 # Chariot
 
+[![license](https://img.shields.io/github/license/openbce/chariot)](http://github.com/openbce/chariot)
+[![RepoSize](https://img.shields.io/github/repo-size/openbce/chariot)](http://github.com/openbce/chariot)
+[![Release](https://img.shields.io/github/release/openbce/chariot)](https://github.com/openbce/chariot/releases)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/8377/badge)](https://bestpractices.coreinfrastructure.org/projects/8377)
+
 Chariot is a solution built on Kubernetes to support offload pod/container for HPC/AI.
 
 ## Description
