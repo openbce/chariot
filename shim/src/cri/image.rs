@@ -12,6 +12,7 @@ limitations under the License.
 */
 
 use tonic::transport::Channel;
+use tracing::info;
 
 use self::crirpc::image_service_client::ImageServiceClient;
 use self::crirpc::{
@@ -33,10 +34,19 @@ impl ImageShim {
             .await
             .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
 
-        let _ = image_client
+        let resp = image_client
             .image_fs_info(ImageFsInfoRequest {})
             .await
             .map_err(|e| ChariotError::CriError(e.to_string()))?;
+        let fs_info = resp.into_inner();
+
+        for fs in fs_info.container_filesystems {
+            info!("Container FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
+        }
+
+        for fs in fs_info.image_filesystems {
+            info!("Image FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
+        }
 
         Ok(ImageShim {
             xpu_client: image_client,

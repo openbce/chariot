@@ -60,8 +60,8 @@ impl RuntimeShim {
         let resp = version.into_inner();
 
         info!(
-            "CRI Info: {}/{}/{}/{}",
-            resp.runtime_api_version, resp.runtime_name, resp.runtime_version, resp.version
+            "Runtime: {}/{}",
+             resp.runtime_name, resp.runtime_version
         );
 
         Ok(RuntimeShim {
