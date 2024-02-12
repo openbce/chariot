@@ -14,6 +14,18 @@ limitations under the License.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::configure()
         .protoc_arg("--experimental_allow_proto3_optional")
+        .type_attribute(
+            "runtime.v1.MountPropagation",
+            "#[allow(clippy::enum_variant_names)]",
+        )
+        .type_attribute(
+            "runtime.v1.ContainerState",
+            "#[allow(clippy::enum_variant_names)]",
+        )
+        .type_attribute(
+            "runtime.v1.ContainerEventType",
+            "#[allow(clippy::enum_variant_names)]",
+        )
         .compile(&["protos/api.proto"], &["protos"])?;
 
     Ok(())
