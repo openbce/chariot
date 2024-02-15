@@ -59,10 +59,7 @@ impl RuntimeShim {
             .map_err(|e| ChariotError::CriError(e.to_string()))?;
         let resp = version.into_inner();
 
-        info!(
-            "Runtime: {}/{}",
-             resp.runtime_name, resp.runtime_version
-        );
+        info!("Runtime: {}/{}", resp.runtime_name, resp.runtime_version);
 
         Ok(RuntimeShim {
             xpu_client: runtime_client,
