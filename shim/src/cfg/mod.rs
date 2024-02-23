@@ -17,10 +17,11 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Options {
-    // The address of Unix socket for Chariot shim.
-    // #[arg(short, long, default_value=cri::DEFAULT_UNIX_SOCKET)]
-    // pub address: String,
     /// The address of CRI server in XPU.
-    #[arg(short, long)]
-    pub xpu_address: String,
+    #[arg(long)]
+    pub xpu_cri: String,
+
+    /// The address of CRI server in host.
+    #[arg(long)]
+    pub host_cri: String,
 }

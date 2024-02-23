@@ -26,22 +26,40 @@ use tokio::net::UnixListener;
 #[cfg(unix)]
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
+use tracing::info;
 
+use crate::cri::image::ImageShim;
+use crate::cri::runtime::RuntimeShim;
 use crate::rpc::cri::image_service_server::ImageServiceServer;
 use crate::rpc::cri::runtime_service_server::RuntimeServiceServer;
 
 #[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // construct a subscriber that prints formatted traces to stdout
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
-    // use that subscriber to process traces emitted after this point
-    tracing::subscriber::set_global_default(subscriber)?;
+    let log_level = match std::env::var("CHARIOT_LOG") {
+        Ok(level) => match level.as_str() {
+            "debug" => tracing::Level::DEBUG,
+            "info" => tracing::Level::INFO,
+            "error" => tracing::Level::ERROR,
+            "warn" => tracing::Level::WARN,
+            _ => tracing::Level::INFO,
+        },
+        Err(_) => tracing::Level::INFO,
+    };
+
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .with_target(false)
+        .init();
 
     let args = cfg::Options::parse();
 
-    let image_svc = cri::image::ImageShim::connect(args.xpu_address.clone()).await?;
-    let runtime_svc = cri::runtime::RuntimeShim::connect(args.xpu_address.clone()).await?;
+    info!("Chariot start the CRI listener at {}", cri::DEFAULT_UNIX_SOCKET);
+    info!("Connecting to Host CRI at {}", args.host_cri.clone());
+    info!("Connecting to XPU CRI at {}", args.xpu_cri.clone());
+
+    let image_svc = ImageShim::connect(args.host_cri.clone(), args.xpu_cri.clone()).await?;
+    let runtime_svc = RuntimeShim::connect(args.host_cri.clone(), args.xpu_cri.clone()).await?;
 
     // TODO(k82cn): use the address from args.
     fs::create_dir_all(cri::DEFAULT_UNIX_SOCKET_DIR)?;
