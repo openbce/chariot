@@ -21,5 +21,7 @@ prost-build = "0.12"
 async-trait = "0.1"
 tower = "0.4"
 
+stdng = "0.1"
+
 [build-dependencies]
 tonic-build = { workspace = true }

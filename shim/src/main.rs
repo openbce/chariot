@@ -27,6 +27,7 @@ use tokio::net::UnixListener;
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 use tracing::info;
+use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*};
 
 use crate::cri::image::ImageShim;
 use crate::cri::runtime::RuntimeShim;
@@ -36,21 +37,20 @@ use crate::rpc::cri::runtime_service_server::RuntimeServiceServer;
 #[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let log_level = match std::env::var("CHARIOT_LOG") {
-        Ok(level) => match level.as_str() {
-            "debug" => tracing::Level::DEBUG,
-            "info" => tracing::Level::INFO,
-            "error" => tracing::Level::ERROR,
-            "warn" => tracing::Level::WARN,
-            _ => tracing::Level::INFO,
-        },
-        Err(_) => tracing::Level::INFO,
-    };
+    // Log level is set from, in order of preference:
+    // 1. RUST_LOG environment variable
+    // 2. Level::Info
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy()
+        .add_directive("tower=warn".parse()?)
+        .add_directive("rustls=warn".parse()?)
+        .add_directive("h2=warn".parse()?);
 
-    tracing_subscriber::fmt()
-        .with_max_level(log_level)
-        .with_target(false)
-        .init();
+    tracing_subscriber::registry()
+        .with(fmt::Layer::default().compact().with_writer(std::io::stderr))
+        .with(env_filter)
+        .try_init()?;
 
     let args = cfg::Options::parse();
 
