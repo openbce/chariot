@@ -54,7 +54,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let args = cfg::Options::parse();
 
-    info!("Chariot start the CRI listener at {}", cri::DEFAULT_UNIX_SOCKET);
+    info!(
+        "Chariot start the CRI listener at {}",
+        cri::DEFAULT_UNIX_SOCKET
+    );
     info!("Connecting to Host CRI at {}", args.host_cri.clone());
     info!("Connecting to XPU CRI at {}", args.xpu_cri.clone());
 
