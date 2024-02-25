@@ -11,11 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+use stdng::{logs::TraceFn, trace_fn};
 use tokio::net::UnixStream;
 use tonic::transport::Channel;
 use tonic::transport::{Endpoint, Uri};
 use tower::service_fn;
-use tracing::info;
+use tracing::{debug, info};
 
 use self::crirpc::image_service_client::ImageServiceClient;
 use self::crirpc::{
@@ -23,7 +24,7 @@ use self::crirpc::{
     ListImagesRequest, ListImagesResponse, PullImageRequest, PullImageResponse, RemoveImageRequest,
     RemoveImageResponse,
 };
-use crate::rpc::cri as crirpc;
+use crate::rpc::cri::{self as crirpc, Image, ImageSpec};
 
 use crate::common::ChariotError;
 
@@ -92,42 +93,140 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         &self,
         request: tonic::Request<ListImagesRequest>,
     ) -> Result<tonic::Response<ListImagesResponse>, tonic::Status> {
-        let mut client = self.host_client.clone();
+        trace_fn!("ImageShim::list_images");
 
-        client.list_images(request).await
+        let mut host_client = self.host_client.clone();
+        let mut xpu_client = self.xpu_client.clone();
+
+        let req = request.into_inner();
+        debug!("list_images request: {:?}", req);
+
+        let host_imgs = host_client
+            .list_images(tonic::Request::new(req.clone()))
+            .await?
+            .into_inner();
+        let xpu_imgs = xpu_client
+            .list_images(tonic::Request::new(req.clone()))
+            .await?
+            .into_inner();
+
+        let mut resp = ListImagesResponse { images: vec![] };
+
+        resp.images.extend(
+            xpu_imgs
+                .images
+                .iter()
+                .map(|i| {
+                    let mut img = i.clone();
+
+                    if let Some(mut s) = img.spec {
+                        s.runtime_handler = "xpu".to_string();
+                        img.spec = Some(s);
+                    }
+
+                    img
+                })
+                .collect::<Vec<_>>(),
+        );
+
+        let host_imgs: Vec<_> = host_imgs
+            .images
+            .into_iter()
+            .filter(|i| i.repo_tags.iter().all(|tag| !tag.contains("nginx")))
+            .collect();
+        resp.images.extend(host_imgs);
+
+        debug!("list_images response: {:?}", resp);
+
+        Ok(tonic::Response::new(resp))
     }
 
     async fn image_status(
         &self,
         request: tonic::Request<ImageStatusRequest>,
     ) -> Result<tonic::Response<ImageStatusResponse>, tonic::Status> {
+        trace_fn!("ImageShim::image_status");
+        let req = request.into_inner();
+        debug!("image_status request: {:?}", req);
+
+        if let Some(img) = req.image.clone() {
+            if img.runtime_handler.as_str() == "xpu" {
+                let mut client = self.xpu_client.clone();
+
+                let mut resp = client
+                    .image_status(tonic::Request::new(req))
+                    .await?
+                    .into_inner();
+
+                resp.image = resp.image.map(|img| {
+                    let spec = img.spec.map(|s| ImageSpec {
+                        runtime_handler: "xpu".to_string(),
+                        ..s
+                    });
+
+                    Image { spec, ..img }
+                });
+
+                debug!("image_status response in xpu: {:?}", resp);
+
+                return Ok(tonic::Response::new(resp));
+            }
+        }
+
         let mut client = self.host_client.clone();
 
-        client.image_status(request).await
+        client.image_status(tonic::Request::new(req)).await
     }
+
     /// PullImage pulls an image with authentication config.
     async fn pull_image(
         &self,
         request: tonic::Request<PullImageRequest>,
     ) -> Result<tonic::Response<PullImageResponse>, tonic::Status> {
+        trace_fn!("ImageShim::pull_image");
+        let req = request.into_inner();
+        debug!("image_status request: {:?}", req);
+
+        if let Some(img) = req.image.clone() {
+            if img.runtime_handler.as_str() == "xpu" {
+                let mut client = self.xpu_client.clone();
+
+                return client.pull_image(tonic::Request::new(req)).await;
+            }
+        }
+
         let mut client = self.host_client.clone();
 
-        client.pull_image(request).await
+        client.pull_image(tonic::Request::new(req)).await
     }
 
     async fn remove_image(
         &self,
         request: tonic::Request<RemoveImageRequest>,
     ) -> Result<tonic::Response<RemoveImageResponse>, tonic::Status> {
+        trace_fn!("ImageShim::remove_image");
+        let req = request.into_inner();
+        debug!("remove_image request: {:?}", req);
+
+        if let Some(img) = req.image.clone() {
+            if img.runtime_handler.as_str() == "xpu" {
+                let mut client = self.xpu_client.clone();
+
+                return client.remove_image(tonic::Request::new(req)).await;
+            }
+        }
+
         let mut client = self.host_client.clone();
 
-        client.remove_image(request).await
+        client.remove_image(tonic::Request::new(req)).await
     }
+
     /// ImageFSInfo returns information of the filesystem that is used to store images.
     async fn image_fs_info(
         &self,
         request: tonic::Request<ImageFsInfoRequest>,
     ) -> Result<tonic::Response<ImageFsInfoResponse>, tonic::Status> {
+        trace_fn!("ImageShim::image_fs_info");
         let mut client = self.host_client.clone();
 
         client.image_fs_info(request).await

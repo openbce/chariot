@@ -258,7 +258,9 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         trace_fn!("RuntimeShim::create_container");
 
         let req = request.into_inner();
-        match self.is_container(req.pod_sandbox_id.clone()) {
+        debug!("create_container request: {:?}", req);
+
+        let resp = match self.is_container(req.pod_sandbox_id.clone()) {
             true => {
                 let mut client = self.xpu_client.clone();
                 let resp = client.create_container(tonic::Request::new(req)).await?;
@@ -266,14 +268,21 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
 
                 self.set_container(resp.container_id.clone());
 
-                Ok(tonic::Response::new(resp))
+                resp
             }
             false => {
                 let mut client = self.host_client.clone();
 
-                client.create_container(tonic::Request::new(req)).await
+                client
+                    .create_container(tonic::Request::new(req))
+                    .await?
+                    .into_inner()
             }
-        }
+        };
+
+        debug!("create_container response: {:?}", resp);
+
+        Ok(tonic::Response::new(resp))
     }
 
     /// StartContainer starts the container.
