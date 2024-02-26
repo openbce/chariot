@@ -129,12 +129,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
                 .collect::<Vec<_>>(),
         );
 
-        let host_imgs: Vec<_> = host_imgs
-            .images
-            .into_iter()
-            .filter(|i| i.repo_tags.iter().all(|tag| !tag.contains("nginx")))
-            .collect();
-        resp.images.extend(host_imgs);
+        resp.images.extend(host_imgs.images);
 
         debug!("list_images response: {:?}", resp);
 
@@ -185,7 +180,7 @@ impl crirpc::image_service_server::ImageService for ImageShim {
     ) -> Result<tonic::Response<PullImageResponse>, tonic::Status> {
         trace_fn!("ImageShim::pull_image");
         let req = request.into_inner();
-        debug!("image_status request: {:?}", req);
+        debug!("pull_image request: {:?}", req);
 
         if let Some(img) = req.image.clone() {
             if img.runtime_handler.as_str() == "xpu" {
