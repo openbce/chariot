@@ -1,5 +1,5 @@
 [package]
-name = "chariot-device-plugin"
+name = "chariot-dra"
 version = "0.1.0"
 edition = "2021"
 

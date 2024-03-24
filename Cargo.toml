@@ -2,9 +2,9 @@
 resolver = "2"
 
 members = [
-  "shim",
-  "device_plugin",
+  "dra",
   "operator",
+  "shim",
 ]
 
 [workspace.package]
