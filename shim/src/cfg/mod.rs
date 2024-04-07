@@ -11,17 +11,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 use clap::Parser;
-
+use serde::{Deserialize, Serialize};
 // use crate::cri;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Options {
-    /// The address of CRI server in XPU.
-    #[arg(long)]
-    pub xpu_cri: String,
+    /// The path of configuration file.
+    #[arg(short, long)]
+    pub config: String,
+}
 
-    /// The address of CRI server in host.
-    #[arg(long)]
-    pub host_cri: String,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChariotRuntime {
+    pub name: String,
+    pub endpoint: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChariotOptions {
+    pub default: String,
+    pub endpoint: String,
+    pub storage: String,
+
+    pub runtimes: Vec<ChariotRuntime>,
 }

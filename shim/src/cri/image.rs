@@ -11,6 +11,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+use std::collections::HashMap;
+
 use stdng::{logs::TraceFn, trace_fn};
 use tokio::net::UnixStream;
 use tonic::transport::Channel;
@@ -24,66 +26,88 @@ use self::crirpc::{
     ListImagesRequest, ListImagesResponse, PullImageRequest, PullImageResponse, RemoveImageRequest,
     RemoveImageResponse,
 };
+use crate::cfg::ChariotOptions;
 use crate::rpc::cri::{self as crirpc, Image, ImageSpec};
 
 use crate::common::ChariotError;
 
 pub struct ImageShim {
-    pub xpu_client: ImageServiceClient<Channel>,
-    pub host_client: ImageServiceClient<Channel>,
+    clients: HashMap<String, ImageServiceClient<Channel>>,
+    default_runtime: String,
 }
 
 impl ImageShim {
-    pub async fn connect(host_cri: String, xpu_cri: String) -> Result<Self, ChariotError> {
-        let mut xpu_client = ImageServiceClient::connect(xpu_cri)
-            .await
-            .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+    pub async fn connect(opts: ChariotOptions) -> Result<Self, ChariotError> {
+        let mut clients = HashMap::new();
 
-        // Log XPU image FS info
-        let resp = xpu_client
-            .image_fs_info(ImageFsInfoRequest {})
-            .await
-            .map_err(|e| ChariotError::CriError(e.to_string()))?;
-        let fs_info = resp.into_inner();
+        for rt in opts.runtimes {
+            let uri = rt.endpoint.find("://").unwrap_or(rt.endpoint.len());
+            let (protocol, _) = rt.endpoint.split_at(uri);
+            let mut client = match protocol.to_lowercase().as_str() {
+                "unix" => {
+                    let host_path = rt.endpoint.clone();
+                    let channel = Endpoint::try_from("http://[::]:50051")
+                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?
+                        .connect_with_connector(service_fn(move |_: Uri| {
+                            UnixStream::connect(host_path.clone())
+                        }))
+                        .await
+                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
 
-        for fs in fs_info.container_filesystems {
-            info!("XPU container FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
-        }
+                    ImageServiceClient::new(channel)
+                }
+                _ => ImageServiceClient::connect(rt.endpoint.clone())
+                    .await
+                    .map_err(|e| ChariotError::NetworkError(e.to_string()))?,
+            };
+            // Log image FS info
+            let resp = client
+                .image_fs_info(ImageFsInfoRequest {})
+                .await
+                .map_err(|e| ChariotError::CriError(e.to_string()))?;
+            let fs_info = resp.into_inner();
 
-        for fs in fs_info.image_filesystems {
-            info!("XPU image FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
-        }
+            for fs in fs_info.container_filesystems {
+                info!(
+                    "{} container FS: {:?}",
+                    rt.name,
+                    fs.fs_id.map(|i| i.mountpoint),
+                );
+            }
 
-        let channel = Endpoint::try_from("http://[::]:50051")
-            .map_err(|e| ChariotError::NetworkError(e.to_string()))?
-            .connect_with_connector(service_fn(move |_: Uri| {
-                let host_path = host_cri.clone();
-                UnixStream::connect(host_path)
-            }))
-            .await
-            .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+            for fs in fs_info.image_filesystems {
+                info!("{} image FS: {:?}", rt.name, fs.fs_id.map(|i| i.mountpoint),);
+            }
 
-        let mut host_client = ImageServiceClient::new(channel);
-
-        // Log host image FS info
-        let resp = host_client
-            .image_fs_info(ImageFsInfoRequest {})
-            .await
-            .map_err(|e| ChariotError::CriError(e.to_string()))?;
-        let fs_info = resp.into_inner();
-
-        for fs in fs_info.container_filesystems {
-            info!("Host container FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
-        }
-
-        for fs in fs_info.image_filesystems {
-            info!("Host image FS: {:?}", fs.fs_id.map(|i| i.mountpoint),);
+            clients.insert(rt.name, client);
         }
 
         Ok(ImageShim {
-            xpu_client,
-            host_client,
+            clients,
+            default_runtime: opts.default,
         })
+    }
+}
+
+impl ImageShim {
+    fn get_default_client(&self) -> Result<ImageServiceClient<Channel>, tonic::Status> {
+        self.get_client(&self.default_runtime)
+    }
+
+    fn get_client(&self, name: &str) -> Result<ImageServiceClient<Channel>, tonic::Status> {
+        let name = match name.is_empty() {
+            true => self.default_runtime.as_str(),
+            false => name,
+        };
+
+        let client = self.clients.get(name);
+        match client {
+            Some(c) => Ok(c.clone()),
+            None => Err(tonic::Status::not_found(format!(
+                "no connection for {}",
+                name
+            ))),
+        }
     }
 }
 
@@ -95,41 +119,34 @@ impl crirpc::image_service_server::ImageService for ImageShim {
     ) -> Result<tonic::Response<ListImagesResponse>, tonic::Status> {
         trace_fn!("ImageShim::list_images");
 
-        let mut host_client = self.host_client.clone();
-        let mut xpu_client = self.xpu_client.clone();
-
         let req = request.into_inner();
         debug!("list_images request: {:?}", req);
 
-        let host_imgs = host_client
-            .list_images(tonic::Request::new(req.clone()))
-            .await?
-            .into_inner();
-        let xpu_imgs = xpu_client
-            .list_images(tonic::Request::new(req.clone()))
-            .await?
-            .into_inner();
-
         let mut resp = ListImagesResponse { images: vec![] };
 
-        resp.images.extend(
-            xpu_imgs
-                .images
-                .iter()
-                .map(|i| {
-                    let mut img = i.clone();
+        for (name, client) in &self.clients {
+            let mut client = client.clone();
+            let imgs = client
+                .list_images(tonic::Request::new(req.clone()))
+                .await?
+                .into_inner();
 
-                    if let Some(mut s) = img.spec {
-                        s.runtime_handler = "xpu".to_string();
-                        img.spec = Some(s);
-                    }
+            resp.images.extend(
+                imgs.images
+                    .iter()
+                    .map(|i| {
+                        let mut img = i.clone();
 
-                    img
-                })
-                .collect::<Vec<_>>(),
-        );
+                        if let Some(mut s) = img.spec {
+                            s.runtime_handler = name.clone();
+                            img.spec = Some(s);
+                        }
 
-        resp.images.extend(host_imgs.images);
+                        img
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        }
 
         debug!("list_images response: {:?}", resp);
 
@@ -141,36 +158,32 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<ImageStatusRequest>,
     ) -> Result<tonic::Response<ImageStatusResponse>, tonic::Status> {
         trace_fn!("ImageShim::image_status");
+
         let req = request.into_inner();
         debug!("image_status request: {:?}", req);
 
-        if let Some(img) = req.image.clone() {
-            if img.runtime_handler.as_str() == "xpu" {
-                let mut client = self.xpu_client.clone();
-
+        match req.image {
+            Some(ref img) => {
+                let mut client = self.get_client(&img.runtime_handler)?;
                 let mut resp = client
-                    .image_status(tonic::Request::new(req))
+                    .image_status(tonic::Request::new(req.clone()))
                     .await?
                     .into_inner();
 
+                let handler = img.runtime_handler.clone();
                 resp.image = resp.image.map(|img| {
                     let spec = img.spec.map(|s| ImageSpec {
-                        runtime_handler: "xpu".to_string(),
+                        runtime_handler: handler,
                         ..s
                     });
 
                     Image { spec, ..img }
                 });
 
-                debug!("image_status response in xpu: {:?}", resp);
-
-                return Ok(tonic::Response::new(resp));
+                Ok(tonic::Response::new(resp))
             }
+            None => Err(tonic::Status::not_found("no image info in request")),
         }
-
-        let mut client = self.host_client.clone();
-
-        client.image_status(tonic::Request::new(req)).await
     }
 
     /// PullImage pulls an image with authentication config.
@@ -182,17 +195,13 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         let req = request.into_inner();
         debug!("pull_image request: {:?}", req);
 
-        if let Some(img) = req.image.clone() {
-            if img.runtime_handler.as_str() == "xpu" {
-                let mut client = self.xpu_client.clone();
-
-                return client.pull_image(tonic::Request::new(req)).await;
+        match req.image {
+            Some(ref img) => {
+                let mut client = self.get_client(&img.runtime_handler)?;
+                client.pull_image(tonic::Request::new(req.clone())).await
             }
+            None => Err(tonic::Status::not_found("no image info in request")),
         }
-
-        let mut client = self.host_client.clone();
-
-        client.pull_image(tonic::Request::new(req)).await
     }
 
     async fn remove_image(
@@ -203,17 +212,13 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         let req = request.into_inner();
         debug!("remove_image request: {:?}", req);
 
-        if let Some(img) = req.image.clone() {
-            if img.runtime_handler.as_str() == "xpu" {
-                let mut client = self.xpu_client.clone();
-
-                return client.remove_image(tonic::Request::new(req)).await;
+        match req.image {
+            Some(ref img) => {
+                let mut client = self.get_client(&img.runtime_handler)?;
+                client.remove_image(tonic::Request::new(req.clone())).await
             }
+            None => Err(tonic::Status::not_found("no image info in request")),
         }
-
-        let mut client = self.host_client.clone();
-
-        client.remove_image(tonic::Request::new(req)).await
     }
 
     /// ImageFSInfo returns information of the filesystem that is used to store images.
@@ -222,8 +227,9 @@ impl crirpc::image_service_server::ImageService for ImageShim {
         request: tonic::Request<ImageFsInfoRequest>,
     ) -> Result<tonic::Response<ImageFsInfoResponse>, tonic::Status> {
         trace_fn!("ImageShim::image_fs_info");
-        let mut client = self.host_client.clone();
 
+        // TODO (k82cn): merge image fs info into single response
+        let mut client = self.get_default_client()?;
         client.image_fs_info(request).await
     }
 }

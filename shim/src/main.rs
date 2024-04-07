@@ -21,9 +21,7 @@ use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-#[cfg(unix)]
 use tokio::net::UnixListener;
-#[cfg(unix)]
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::transport::Server;
 use tracing::info;
@@ -34,7 +32,6 @@ use crate::cri::runtime::RuntimeShim;
 use crate::rpc::cri::image_service_server::ImageServiceServer;
 use crate::rpc::cri::runtime_service_server::RuntimeServiceServer;
 
-#[cfg(unix)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Log level is set from, in order of preference:
@@ -54,15 +51,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let args = cfg::Options::parse();
 
+    let config = std::fs::read_to_string(args.config)?;
+    let opts: cfg::ChariotOptions = toml::from_str(config.as_str())?;
+
     info!(
         "Chariot start the CRI listener at {}",
         cri::DEFAULT_UNIX_SOCKET
     );
-    info!("Connecting to Host CRI at {}", args.host_cri.clone());
-    info!("Connecting to XPU CRI at {}", args.xpu_cri.clone());
 
-    let image_svc = ImageShim::connect(args.host_cri.clone(), args.xpu_cri.clone()).await?;
-    let runtime_svc = RuntimeShim::connect(args.host_cri.clone(), args.xpu_cri.clone()).await?;
+    let image_svc = ImageShim::connect(opts.clone()).await?;
+    let runtime_svc = RuntimeShim::connect(opts.clone()).await?;
 
     // TODO(k82cn): use the address from args.
     fs::create_dir_all(cri::DEFAULT_UNIX_SOCKET_DIR)?;

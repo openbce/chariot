@@ -12,16 +12,18 @@ clap = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+toml = { workspace = true }
+stdng = { workspace = true }
 
 tokio-stream = { version="0.1", features=["net"] }
 futures="0.3"
 prost = "0.12"
 prost-types = "0.12"
 prost-build = "0.12"
-async-trait = "0.1"
 tower = "0.4"
-
-stdng = "0.1"
 
 [build-dependencies]
 tonic-build = { workspace = true }
