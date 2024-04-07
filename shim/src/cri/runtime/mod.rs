@@ -63,18 +63,18 @@ impl RuntimeShim {
                 "unix" => {
                     let host_path = rt.endpoint.clone();
                     let channel = Endpoint::try_from("http://[::]:50051")
-                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?
+                        .map_err(|e| ChariotError::Network(e.to_string()))?
                         .connect_with_connector(service_fn(move |_: Uri| {
                             UnixStream::connect(host_path.clone())
                         }))
                         .await
-                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+                        .map_err(|e| ChariotError::Network(e.to_string()))?;
 
                     RuntimeServiceClient::new(channel)
                 }
                 _ => RuntimeServiceClient::connect(rt.endpoint.clone())
                     .await
-                    .map_err(|e| ChariotError::NetworkError(e.to_string()))?,
+                    .map_err(|e| ChariotError::Network(e.to_string()))?,
             };
             // Get the version of runtime service.
             let request = crirpc::VersionRequest {
@@ -84,7 +84,7 @@ impl RuntimeShim {
             let version = client
                 .version(request.clone())
                 .await
-                .map_err(|e| ChariotError::CriError(e.to_string()))?;
+                .map_err(|e| ChariotError::Cri(e.to_string()))?;
             let resp = version.into_inner();
 
             info!(
@@ -95,10 +95,21 @@ impl RuntimeShim {
             clients.insert(rt.name, client);
         }
 
+        let storage = storage::new(&opts.storage)?;
+
+        let c = storage.list_containers().await?;
+        let s = storage.list_sandboxes().await?;
+
+        info!(
+            "There are {} containers and {} sandboxes.",
+            c.len(),
+            s.len()
+        );
+
         Ok(RuntimeShim {
             clients,
             default_runtime: opts.default,
-            storage: storage::new(&opts.storage)?,
+            storage,
         })
     }
 }

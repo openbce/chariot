@@ -18,24 +18,24 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ChariotError {
     #[error("{0}")]
-    NetworkError(String),
+    Network(String),
     #[error("{0}")]
-    CriError(String),
+    Cri(String),
     #[error("{0}")]
-    IOError(String),
+    IO(String),
     #[error("{0}")]
-    JsonError(String),
+    Json(String),
 }
 
 impl From<io::Error> for ChariotError {
     fn from(e: io::Error) -> Self {
-        ChariotError::IOError(e.to_string())
+        ChariotError::IO(e.to_string())
     }
 }
 
 impl From<serde_json::Error> for ChariotError {
     fn from(e: serde_json::Error) -> Self {
-        ChariotError::JsonError(e.to_string())
+        ChariotError::Json(e.to_string())
     }
 }
 

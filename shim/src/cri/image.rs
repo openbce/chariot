@@ -47,24 +47,24 @@ impl ImageShim {
                 "unix" => {
                     let host_path = rt.endpoint.clone();
                     let channel = Endpoint::try_from("http://[::]:50051")
-                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?
+                        .map_err(|e| ChariotError::Network(e.to_string()))?
                         .connect_with_connector(service_fn(move |_: Uri| {
                             UnixStream::connect(host_path.clone())
                         }))
                         .await
-                        .map_err(|e| ChariotError::NetworkError(e.to_string()))?;
+                        .map_err(|e| ChariotError::Network(e.to_string()))?;
 
                     ImageServiceClient::new(channel)
                 }
                 _ => ImageServiceClient::connect(rt.endpoint.clone())
                     .await
-                    .map_err(|e| ChariotError::NetworkError(e.to_string()))?,
+                    .map_err(|e| ChariotError::Network(e.to_string()))?,
             };
             // Log image FS info
             let resp = client
                 .image_fs_info(ImageFsInfoRequest {})
                 .await
-                .map_err(|e| ChariotError::CriError(e.to_string()))?;
+                .map_err(|e| ChariotError::Cri(e.to_string()))?;
             let fs_info = resp.into_inner();
 
             for fs in fs_info.container_filesystems {
