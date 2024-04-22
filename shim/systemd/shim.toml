@@ -1,0 +1,11 @@
+default = "containerd"
+endpoint = "/var/run/chariot/chariot.sock"
+storage = "/etc/chariot/data"
+
+[[runtimes]]
+name = "containerd"
+endpoint = "unix:///var/run/containerd/containerd.sock"
+
+[[runtimes]]
+name = "xpu"
+endpoint = "http://192.168.100.2:9090"

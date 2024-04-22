@@ -58,10 +58,10 @@ impl RuntimeShim {
         let mut clients = HashMap::new();
         for rt in opts.runtimes {
             let uri = rt.endpoint.find("://").unwrap_or(rt.endpoint.len());
-            let (protocol, _) = rt.endpoint.split_at(uri);
+            let (protocol, path) = rt.endpoint.split_at(uri + 3);
+            let host_path = path.to_string();
             let mut client = match protocol.to_lowercase().as_str() {
-                "unix" => {
-                    let host_path = rt.endpoint.clone();
+                "unix://" => {
                     let channel = Endpoint::try_from("http://[::]:50051")
                         .map_err(|e| ChariotError::Network(e.to_string()))?
                         .connect_with_connector(service_fn(move |_: Uri| {

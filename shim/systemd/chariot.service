@@ -1,4 +1,4 @@
 [Service]
-Environment="CHARIOT_LOG=info"
+Environment="RUST_LOG=debug"
 # EnvironmentFile=
-ExecStart=/usr/bin/chariot-shim --host-cri /run/containerd/containerd.sock --xpu-cri  http://192.168.100.2:9090
+ExecStart=/usr/bin/chariot-shim --config /etc/chariot/shim.toml
