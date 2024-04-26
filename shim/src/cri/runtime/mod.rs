@@ -43,6 +43,7 @@ use self::crirpc::{
 use self::storage::Storage;
 use crate::cfg::ChariotOptions;
 use crate::common::ChariotError;
+use crate::cri::runtime::storage::{Container, Sandbox};
 use crate::rpc::cri as crirpc;
 
 mod storage;
@@ -56,6 +57,8 @@ pub struct RuntimeShim {
 impl RuntimeShim {
     pub async fn connect(opts: ChariotOptions) -> Result<Self, ChariotError> {
         let mut clients = HashMap::new();
+        let storage = storage::new(&opts.storage)?;
+
         for rt in opts.runtimes {
             let uri = rt.endpoint.find("://").unwrap_or(rt.endpoint.len());
             let (protocol, path) = rt.endpoint.split_at(uri + 3);
@@ -92,10 +95,40 @@ impl RuntimeShim {
                 rt.name, resp.runtime_name, resp.runtime_version
             );
 
+            // Sync up Sandbox and Container of each runtime.
+            let request = crirpc::ListPodSandboxRequest { filter: None };
+            let sandbox = client
+                .list_pod_sandbox(request)
+                .await
+                .map_err(|e| ChariotError::Cri(e.to_string()))?;
+
+            for s in sandbox.into_inner().items {
+                storage
+                    .persist_sandbox(&Sandbox {
+                        id: s.id.clone(),
+                        runtime: rt.name.clone(),
+                    })
+                    .await?;
+            }
+
+            let request = crirpc::ListContainersRequest { filter: None };
+            let container = client
+                .list_containers(request)
+                .await
+                .map_err(|e| ChariotError::Cri(e.to_string()))?;
+
+            for c in container.into_inner().containers {
+                storage
+                    .persist_container(&Container {
+                        id: c.id.clone(),
+                        sandbox: c.pod_sandbox_id.clone(),
+                        runtime: rt.name.clone(),
+                    })
+                    .await?;
+            }
+
             clients.insert(rt.name, client);
         }
-
-        let storage = storage::new(&opts.storage)?;
 
         let c = storage.list_containers().await?;
         let s = storage.list_sandboxes().await?;
