@@ -19,7 +19,7 @@ The operator to manage DPUs, e.g. provisioning, rolling upgrade.
 
 A shim to communicate with containerd in DPU.
 
-### chariot-device-plugin
+### chariot-dra
 
 Report information of DPUs, e.g. arm core.
 
