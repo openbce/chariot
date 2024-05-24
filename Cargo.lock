@@ -223,10 +223,6 @@ name = "chariot-dra"
 version = "0.1.0"
 
 [[package]]
-name = "chariot-operator"
-version = "0.1.0"
-
-[[package]]
 name = "chariot-shim"
 version = "0.1.0"
 dependencies = [

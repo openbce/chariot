@@ -188,6 +188,7 @@ impl crirpc::runtime_service_server::RuntimeService for RuntimeShim {
         trace_fn!("RuntimeShim::run_pod_sandbox");
 
         let req = request.into_inner();
+        debug!("run_pod_sandbox request: {:?}", req);
 
         let mut client = self.get_client(&req.runtime_handler)?;
         let resp = client
