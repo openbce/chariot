@@ -2,4 +2,5 @@ apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
   name: xpu 
-handler: xpu 
+handler: xpu
+# address: unix:///var/run/chariot/chariot.sock
