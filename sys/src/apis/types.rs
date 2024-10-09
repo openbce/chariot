@@ -12,10 +12,24 @@ limitations under the License.
 */
 
 use std::io;
+use std::error::Error;
 
-use thiserror::Error;
+use serde::{Deserialize, Serialize};
 
-#[derive(Error, Debug)]
+pub type ChariotResult<T> = Result<T, Box<dyn Error>>;
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct Sandbox {
+    pub containers: Vec<Container>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct Container {
+    pub image: String,
+    pub command: String,
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum ChariotError {
     #[error("{0}")]
     Network(String),

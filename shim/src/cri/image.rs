@@ -27,9 +27,8 @@ use self::crirpc::{
     RemoveImageResponse,
 };
 use crate::cfg::ChariotOptions;
-use crate::rpc::cri::{self as crirpc, Image, ImageSpec};
-
-use crate::common::ChariotError;
+use sys::cri::{self as crirpc, Image, ImageSpec};
+use sys::ChariotError;
 
 pub struct ImageShim {
     clients: HashMap<String, ImageServiceClient<Channel>>,

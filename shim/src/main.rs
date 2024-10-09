@@ -12,9 +12,7 @@ limitations under the License.
 */
 
 mod cfg;
-mod common;
 mod cri;
-mod rpc;
 
 use std::error::Error;
 use std::fs;
@@ -29,11 +27,12 @@ use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*
 
 use crate::cri::image::ImageShim;
 use crate::cri::runtime::RuntimeShim;
-use crate::rpc::cri::image_service_server::ImageServiceServer;
-use crate::rpc::cri::runtime_service_server::RuntimeServiceServer;
+use sys::cri::image_service_server::ImageServiceServer;
+use sys::cri::runtime_service_server::RuntimeServiceServer;
+use sys::ChariotResult;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> ChariotResult<()> {
     // Log level is set from, in order of preference:
     // 1. RUST_LOG environment variable
     // 2. Level::Info

@@ -17,7 +17,7 @@ use std::io::prelude::*;
 use super::Engine;
 
 use super::{Container, Sandbox};
-use crate::common::ChariotError;
+use sys::ChariotError;
 
 pub struct FsEngine {
     sandbox_path: String,
