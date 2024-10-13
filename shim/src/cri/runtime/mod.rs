@@ -44,8 +44,8 @@ use self::storage::Storage;
 use crate::cfg::ChariotOptions;
 use crate::cri::runtime::storage::{Container, Sandbox};
 
-use sys::cri as crirpc;
-use sys::ChariotError;
+use chariot_sys::cri as crirpc;
+use chariot_sys::ChariotError;
 
 mod storage;
 

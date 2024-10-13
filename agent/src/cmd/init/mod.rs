@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use sys::ChariotResult;
+use chariot_sys::ChariotResult;
 
 pub async fn run() -> ChariotResult<()> {
     Ok(())

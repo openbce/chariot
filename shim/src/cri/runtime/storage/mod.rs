@@ -16,7 +16,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use self::engine::EnginePtr;
-use sys::ChariotError;
+use chariot_sys::ChariotError;
 
 mod engine;
 

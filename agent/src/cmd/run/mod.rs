@@ -15,12 +15,17 @@ use std::ffi::CString;
 use std::fs;
 
 use nix::{
-    sched::CloneFlags, sys::wait::wait, unistd::{execv, getpid}
+    libc,
+    sched::CloneFlags,
+    sys::wait::wait,
+    unistd::{execv, getpid, pivot_root},
 };
 
-pub async fn run(file: String) -> sys::ChariotResult<()> {
+use chariot_sys::{ChariotResult, Sandbox};
+
+pub async fn run(file: String) -> ChariotResult<()> {
     let yaml = fs::read_to_string(file)?;
-    let sandbox: sys::Sandbox = serde_yaml::from_str(&yaml)?;
+    let sandbox: Sandbox = serde_yaml::from_str(&yaml)?;
 
     let mut stack = [0u8; 1024 * 1024];
     let flags = CloneFlags::empty()
@@ -36,7 +41,9 @@ pub async fn run(file: String) -> sys::ChariotResult<()> {
             Box::new(|| run_standbox(sandbox.clone())),
             &mut stack,
             flags,
-            None,
+            // The SIGCHLD signal is required for wait/waitpid;
+            // otherwise, ECHILD will be reported.
+            Some(libc::SIGCHLD),
         )?
     };
 
@@ -47,9 +54,11 @@ pub async fn run(file: String) -> sys::ChariotResult<()> {
     Ok(())
 }
 
-fn run_standbox(sandbox: sys::Sandbox) -> isize {
+fn run_standbox(sandbox: Sandbox) -> isize {
+    tracing::debug!("Child pid is <{}>.", getpid());
     // TODO: setup environment for the container, e.g. pivot_root
 
+    // let _ = pivot_root(new_root, put_old);
     let cmd = CString::new(sandbox.entrypoint.as_bytes()).unwrap();
 
     // execute `Sandbox entrypoint`

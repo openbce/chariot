@@ -26,9 +26,9 @@ use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*
 
 use crate::cri::image::ImageShim;
 use crate::cri::runtime::RuntimeShim;
-use sys::cri::image_service_server::ImageServiceServer;
-use sys::cri::runtime_service_server::RuntimeServiceServer;
-use sys::ChariotResult;
+use chariot_sys::cri::image_service_server::ImageServiceServer;
+use chariot_sys::cri::runtime_service_server::RuntimeServiceServer;
+use chariot_sys::ChariotResult;
 
 #[tokio::main]
 async fn main() -> ChariotResult<()> {
