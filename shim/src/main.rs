@@ -14,7 +14,6 @@ limitations under the License.
 mod cfg;
 mod cri;
 
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 

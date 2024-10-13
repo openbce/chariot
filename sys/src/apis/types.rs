@@ -11,19 +11,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::io;
 use std::error::Error;
+use std::io;
 
 use serde::{Deserialize, Serialize};
 
 pub type ChariotResult<T> = Result<T, Box<dyn Error>>;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Sandbox {
+    pub name: String,
+    pub image: String,
+    pub entrypoint: String,
     pub containers: Vec<Container>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Container {
     pub image: String,
     pub command: String,

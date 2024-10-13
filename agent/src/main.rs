@@ -17,7 +17,6 @@ mod cmd;
 use std::error::Error;
 
 use clap::Parser;
-use tracing::info;
 use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*};
 
 #[tokio::main]

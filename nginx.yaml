@@ -1,0 +1,4 @@
+name: nginx
+image: nginx
+entrypoint: /usr/bin/ls
+containers: []

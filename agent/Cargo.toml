@@ -21,4 +21,4 @@ async-trait = { workspace = true }
 toml = { workspace = true }
 stdng = { workspace = true }
 
-nix = { version = "0.29" }
+nix = { version = "0.29" , features = ["sched"]}

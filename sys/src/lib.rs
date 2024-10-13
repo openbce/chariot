@@ -14,5 +14,5 @@ limitations under the License.
 mod apis;
 mod rpc;
 
-pub use apis::{ChariotError, Container, Sandbox, ChariotResult};
+pub use apis::{ChariotError, ChariotResult, Container, Sandbox};
 pub use rpc::cri;
