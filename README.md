@@ -5,23 +5,28 @@
 [![Release](https://img.shields.io/github/release/openbce/chariot)](https://github.com/openbce/chariot/releases)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/8377/badge)](https://bestpractices.coreinfrastructure.org/projects/8377)
 
-Chariot is a solution built on Kubernetes to support offload pod/container for HPC/AI.
+Chariot is a lightweight container runtime to support offload pod/container for HPC/AI.
 
 ## Description
 
 ![overall](docs/images/chariot-overview.png)
 
-### chariot-operator
+### chariot
 
-The operator to manage DPUs, e.g. provisioning, rolling upgrade.
+A lightweight container runtime in xPU.
 
 ### chariot-shim
 
-A shim to communicate with containerd in DPU.
+A shim to communicate with Containerd/Docker on host and Chariot in xPU.
 
-### chariot-dra
+## Tutorial
 
-Report information of DPUs, e.g. arm core.
+### Download OCI images
+
+```
+$ export CHARIOT_HOME=/opt/chariot
+$ skopeo copy docker://quay.io/quay/busybox:latest dir://${CHARIOT_HOME}/images/busybox/latest
+```
 
 ## License
 
