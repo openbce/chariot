@@ -41,7 +41,13 @@ pub async fn run(file: String) -> ChariotResult<()> {
 
     let pid = unsafe {
         nix::sched::clone(
-            Box::new(|| run_standbox(container.clone())),
+            Box::new(|| match run_container(container.clone()) {
+                Ok(()) => 0,
+                Err(e) => {
+                    tracing::error!("Failed to run container: {e}");
+                    -1
+                },
+            }),
             &mut stack,
             flags,
             // The SIGCHLD signal is required for wait/waitpid;
@@ -52,36 +58,34 @@ pub async fn run(file: String) -> ChariotResult<()> {
 
     tracing::debug!("Waiting for the child process <{pid}> to finish.");
     let status = wait()?;
-    tracing::info!("The container <{}> was exited", status.pid().unwrap());
+    tracing::debug!("The container <{}> was exited", status.pid().unwrap());
 
     Ok(())
 }
 
-fn run_standbox(container: Container) -> isize {
+fn run_container(container: Container) -> ChariotResult<()> {
     tracing::debug!("Run sandbox <{}> as <{}>.", container.name, getpid());
 
     // TODO: get the CHARIOT_HOME from configure file.
     let manifest_path = format!("{}/manifest.json", container.image);
     tracing::debug!("Loading image manifest <{}>.", manifest_path);
-    let image_manifest = ImageManifest::from_file(manifest_path).unwrap();
+    let image_manifest = ImageManifest::from_file(manifest_path)?;
 
     for layer in image_manifest.layers() {
         // TODO: detect mediaType and select unpack tools accordingly.
         let layer_path = format!("{}/{}", container.image, layer.digest().digest());
-        let tar_gz = fs::File::open(layer_path).unwrap();
+        let tar_gz = fs::File::open(layer_path)?;
         let tar = GzDecoder::new(tar_gz);
         let mut archive = tar::Archive::new(tar);
-        archive
-            .unpack(format!("/opt/chariot/containers/{}", container.name))
-            .unwrap();
+        archive.unpack(format!("/opt/chariot/containers/{}", container.name))?;
     }
 
     // TODO: setup environment for the container, e.g. pivot_root
     // let _ = pivot_root(new_root, put_old);
-    let cmd = CString::new(container.entrypoint.as_bytes()).unwrap();
+    let cmd = CString::new(container.entrypoint.as_bytes())?;
 
     // execute `container entrypoint`
     let _ = execv(cmd.as_c_str(), &[cmd.as_c_str()]);
 
-    0
+    Ok(())
 }
