@@ -24,6 +24,9 @@ pub enum Commands {
 
     /// Run a Pod directly
     Runp,
+
+    /// Start a CRI service
+    Start,
 }
 
 #[derive(Parser)]

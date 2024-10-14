@@ -74,7 +74,6 @@ fn run_standbox(container: Container) -> isize {
         archive
             .unpack(format!("/opt/chariot/containers/{}", container.name))
             .unwrap();
-        // println!("type: {}, dig: {}",d.media_type(), d.digest());
     }
 
     // TODO: setup environment for the container, e.g. pivot_root

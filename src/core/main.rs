@@ -42,6 +42,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         cfg::Commands::Runp => {
             cmd::runp::run().await?;
         }
+        cfg::Commands::Start => {
+            cmd::start::run().await?;
+        }
         cfg::Commands::Runc { file } => {
             cmd::runc::run(file).await?;
         }
