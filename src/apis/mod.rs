@@ -11,8 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-mod apis;
-mod rpc;
+mod types;
 
-pub use apis::{ChariotError, ChariotResult, Container, Sandbox};
-pub use rpc::cri;
+pub use types::{ChariotError, ChariotResult, Container, Sandbox};

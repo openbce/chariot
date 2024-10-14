@@ -12,7 +12,8 @@ limitations under the License.
 */
 
 mod cfg;
-mod cri;
+mod runtime;
+mod image;
 
 use std::fs;
 use std::path::Path;
@@ -24,11 +25,16 @@ use tonic::transport::Server;
 use tracing::info;
 use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*};
 
-use crate::cri::image::ImageShim;
-use crate::cri::runtime::RuntimeShim;
-use chariot_sys::cri::image_service_server::ImageServiceServer;
-use chariot_sys::cri::runtime_service_server::RuntimeServiceServer;
-use chariot_sys::ChariotResult;
+use crate::image::ImageShim;
+use crate::runtime::RuntimeShim;
+use chariot::cri::image_service_server::ImageServiceServer;
+use chariot::cri::runtime_service_server::RuntimeServiceServer;
+use chariot::apis::ChariotResult;
+
+// The default Unix socket for Chariot shim.
+pub const DEFAULT_UNIX_SOCKET_DIR: &str = "/run/chariot";
+pub const DEFAULT_UNIX_SOCKET: &str = "/run/chariot/chariot.sock";
+
 
 #[tokio::main]
 async fn main() -> ChariotResult<()> {
@@ -54,20 +60,20 @@ async fn main() -> ChariotResult<()> {
 
     info!(
         "Chariot start the CRI listener at {}",
-        cri::DEFAULT_UNIX_SOCKET
+        DEFAULT_UNIX_SOCKET
     );
 
     let image_svc = ImageShim::connect(opts.clone()).await?;
     let runtime_svc = RuntimeShim::connect(opts.clone()).await?;
 
     // TODO(k82cn): use the address from args.
-    fs::create_dir_all(cri::DEFAULT_UNIX_SOCKET_DIR)?;
+    fs::create_dir_all(DEFAULT_UNIX_SOCKET_DIR)?;
 
-    if Path::new(cri::DEFAULT_UNIX_SOCKET).exists() {
-        fs::remove_file(cri::DEFAULT_UNIX_SOCKET)?;
+    if Path::new(DEFAULT_UNIX_SOCKET).exists() {
+        fs::remove_file(DEFAULT_UNIX_SOCKET)?;
     }
 
-    let uds = UnixListener::bind(cri::DEFAULT_UNIX_SOCKET)?;
+    let uds = UnixListener::bind(DEFAULT_UNIX_SOCKET)?;
     let uds_stream = UnixListenerStream::new(uds);
 
     Server::builder()

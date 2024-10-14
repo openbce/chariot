@@ -11,9 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-pub mod image;
-pub mod runtime;
+pub mod apis;
+pub mod rpc;
 
-// The default Unix socket for Chariot shim.
-pub const DEFAULT_UNIX_SOCKET_DIR: &str = "/run/chariot";
-pub const DEFAULT_UNIX_SOCKET: &str = "/run/chariot/chariot.sock";
+pub use rpc::cri;

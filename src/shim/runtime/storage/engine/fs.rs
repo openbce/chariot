@@ -17,7 +17,7 @@ use std::io::prelude::*;
 use super::Engine;
 
 use super::{Container, Sandbox};
-use chariot_sys::ChariotError;
+use chariot::apis::ChariotError;
 
 pub struct FsEngine {
     sandbox_path: String,

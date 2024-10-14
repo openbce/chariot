@@ -21,7 +21,7 @@ use nix::{
     unistd::{execv, getpid, pivot_root},
 };
 
-use chariot_sys::{ChariotResult, Sandbox};
+use chariot::apis::{ChariotResult, Sandbox};
 
 pub async fn run(file: String) -> ChariotResult<()> {
     let yaml = fs::read_to_string(file)?;

@@ -14,7 +14,7 @@ limitations under the License.
 use std::sync::Arc;
 
 use super::{Container, Sandbox};
-use chariot_sys::ChariotError;
+use chariot::apis::ChariotError;
 
 pub mod fs;
 
