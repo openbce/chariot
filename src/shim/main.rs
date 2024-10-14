@@ -12,8 +12,8 @@ limitations under the License.
 */
 
 mod cfg;
-mod runtime;
 mod image;
+mod runtime;
 
 use std::fs;
 use std::path::Path;
@@ -27,14 +27,13 @@ use tracing_subscriber::{filter::EnvFilter, filter::LevelFilter, fmt, prelude::*
 
 use crate::image::ImageShim;
 use crate::runtime::RuntimeShim;
+use chariot::apis::ChariotResult;
 use chariot::cri::image_service_server::ImageServiceServer;
 use chariot::cri::runtime_service_server::RuntimeServiceServer;
-use chariot::apis::ChariotResult;
 
 // The default Unix socket for Chariot shim.
 pub const DEFAULT_UNIX_SOCKET_DIR: &str = "/run/chariot";
 pub const DEFAULT_UNIX_SOCKET: &str = "/run/chariot/chariot.sock";
-
 
 #[tokio::main]
 async fn main() -> ChariotResult<()> {
@@ -58,10 +57,7 @@ async fn main() -> ChariotResult<()> {
     let config = std::fs::read_to_string(args.config)?;
     let opts: cfg::ChariotOptions = toml::from_str(config.as_str())?;
 
-    info!(
-        "Chariot start the CRI listener at {}",
-        DEFAULT_UNIX_SOCKET
-    );
+    info!("Chariot start the CRI listener at {}", DEFAULT_UNIX_SOCKET);
 
     let image_svc = ImageShim::connect(opts.clone()).await?;
     let runtime_svc = RuntimeShim::connect(opts.clone()).await?;

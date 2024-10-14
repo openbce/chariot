@@ -28,8 +28,8 @@ use self::crirpc::{
 };
 use crate::cfg::ChariotOptions;
 
-use chariot::cri::{self as crirpc, Image, ImageSpec};
 use chariot::apis::ChariotError;
+use chariot::cri::{self as crirpc, Image, ImageSpec};
 
 pub struct ImageShim {
     clients: HashMap<String, ImageServiceClient<Channel>>,

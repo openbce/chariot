@@ -11,7 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 mod cfg;
 mod cmd;
 
@@ -37,7 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .with(env_filter)
         .try_init()?;
 
-    let options = cfg::AgentOptions::parse();
+    let options = cfg::ChariotOptions::parse();
 
     match options.command {
         cfg::Commands::Init => {

@@ -28,7 +28,7 @@ pub enum Commands {
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
-pub struct AgentOptions {
+pub struct ChariotOptions {
     #[command(subcommand)]
     pub command: Commands,
 }

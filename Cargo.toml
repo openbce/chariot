@@ -35,6 +35,8 @@ toml = "0.8"
 
 nix = { version = "0.29" , features = ["sched", "fs", "signal"]}
 oci-spec = "0.7.0"
+flate2 = "1.0"
+tar = "0.4"
 
 [build-dependencies]
 tonic-build = "0.11"

@@ -21,6 +21,9 @@ use nix::{
     unistd::{execv, getpid, pivot_root},
 };
 
+use flate2::read::GzDecoder;
+use oci_spec::image::ImageManifest;
+
 use chariot::apis::{ChariotResult, Sandbox};
 
 pub async fn run(file: String) -> ChariotResult<()> {
@@ -55,9 +58,26 @@ pub async fn run(file: String) -> ChariotResult<()> {
 }
 
 fn run_standbox(sandbox: Sandbox) -> isize {
-    tracing::debug!("Child pid is <{}>.", getpid());
-    // TODO: setup environment for the container, e.g. pivot_root
+    tracing::debug!("Run sandbox <{}> as <{}>.", sandbox.name, getpid());
 
+    // TODO: get the CHARIOT_HOME from configure file.
+    let manifest_path = format!("{}/manifest.json", sandbox.image);
+    tracing::debug!("Loading image manifest <{}>.", manifest_path);
+    let image_manifest = ImageManifest::from_file(manifest_path).unwrap();
+
+    for layer in image_manifest.layers() {
+        // TODO: detect mediaType and select unpack tools accordingly.
+        let layer_path = format!("{}/{}", sandbox.image, layer.digest().digest());
+        let tar_gz = fs::File::open(layer_path).unwrap();
+        let tar = GzDecoder::new(tar_gz);
+        let mut archive = tar::Archive::new(tar);
+        archive
+            .unpack(format!("/opt/chariot/containers/{}", sandbox.name))
+            .unwrap();
+        // println!("type: {}, dig: {}",d.media_type(), d.digest());
+    }
+
+    // TODO: setup environment for the container, e.g. pivot_root
     // let _ = pivot_root(new_root, put_old);
     let cmd = CString::new(sandbox.entrypoint.as_bytes()).unwrap();
 
