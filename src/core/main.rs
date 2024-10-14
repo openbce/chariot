@@ -39,11 +39,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let options = cfg::ChariotOptions::parse();
 
     match options.command {
-        cfg::Commands::Init => {
-            cmd::init::run().await?;
+        cfg::Commands::Runp => {
+            cmd::runp::run().await?;
         }
-        cfg::Commands::Run { file } => {
-            cmd::run::run(file).await?;
+        cfg::Commands::Runc { file } => {
+            cmd::runc::run(file).await?;
         }
     }
 

@@ -24,11 +24,11 @@ use nix::{
 use flate2::read::GzDecoder;
 use oci_spec::image::ImageManifest;
 
-use chariot::apis::{ChariotResult, Sandbox};
+use chariot::apis::{ChariotResult, Container};
 
 pub async fn run(file: String) -> ChariotResult<()> {
     let yaml = fs::read_to_string(file)?;
-    let sandbox: Sandbox = serde_yaml::from_str(&yaml)?;
+    let container: Container = serde_yaml::from_str(&yaml)?;
 
     let mut stack = [0u8; 1024 * 1024];
     let flags = CloneFlags::empty()
@@ -41,7 +41,7 @@ pub async fn run(file: String) -> ChariotResult<()> {
 
     let pid = unsafe {
         nix::sched::clone(
-            Box::new(|| run_standbox(sandbox.clone())),
+            Box::new(|| run_standbox(container.clone())),
             &mut stack,
             flags,
             // The SIGCHLD signal is required for wait/waitpid;
@@ -57,31 +57,31 @@ pub async fn run(file: String) -> ChariotResult<()> {
     Ok(())
 }
 
-fn run_standbox(sandbox: Sandbox) -> isize {
-    tracing::debug!("Run sandbox <{}> as <{}>.", sandbox.name, getpid());
+fn run_standbox(container: Container) -> isize {
+    tracing::debug!("Run sandbox <{}> as <{}>.", container.name, getpid());
 
     // TODO: get the CHARIOT_HOME from configure file.
-    let manifest_path = format!("{}/manifest.json", sandbox.image);
+    let manifest_path = format!("{}/manifest.json", container.image);
     tracing::debug!("Loading image manifest <{}>.", manifest_path);
     let image_manifest = ImageManifest::from_file(manifest_path).unwrap();
 
     for layer in image_manifest.layers() {
         // TODO: detect mediaType and select unpack tools accordingly.
-        let layer_path = format!("{}/{}", sandbox.image, layer.digest().digest());
+        let layer_path = format!("{}/{}", container.image, layer.digest().digest());
         let tar_gz = fs::File::open(layer_path).unwrap();
         let tar = GzDecoder::new(tar_gz);
         let mut archive = tar::Archive::new(tar);
         archive
-            .unpack(format!("/opt/chariot/containers/{}", sandbox.name))
+            .unpack(format!("/opt/chariot/containers/{}", container.name))
             .unwrap();
         // println!("type: {}, dig: {}",d.media_type(), d.digest());
     }
 
     // TODO: setup environment for the container, e.g. pivot_root
     // let _ = pivot_root(new_root, put_old);
-    let cmd = CString::new(sandbox.entrypoint.as_bytes()).unwrap();
+    let cmd = CString::new(container.entrypoint.as_bytes()).unwrap();
 
-    // execute `Sandbox entrypoint`
+    // execute `container entrypoint`
     let _ = execv(cmd.as_c_str(), &[cmd.as_c_str()]);
 
     0

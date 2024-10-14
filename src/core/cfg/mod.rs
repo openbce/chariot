@@ -15,15 +15,15 @@ use clap::{Parser, Subcommand};
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Run a container/sandbox directly
-    Run {
-        /// The yaml file of container/sandbox to run
+    /// Run a container directly
+    Runc {
+        /// The yaml file of container to run
         #[arg(short, long)]
         file: String,
     },
 
-    /// Init a container/sandbox
-    Init,
+    /// Run a Pod directly
+    Runp,
 }
 
 #[derive(Parser)]

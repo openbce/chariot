@@ -1,4 +1,3 @@
 name: busybox
 image: /opt/chariot/images/busybox
 entrypoint: /usr/bin/ls
-containers: []

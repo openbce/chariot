@@ -28,8 +28,9 @@ pub struct Sandbox {
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Container {
+    pub name: String,
     pub image: String,
-    pub command: String,
+    pub entrypoint: String,
 }
 
 #[derive(thiserror::Error, Debug)]
