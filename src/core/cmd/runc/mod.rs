@@ -18,7 +18,7 @@ use nix::{
     libc,
     sched::CloneFlags,
     sys::wait::wait,
-    unistd::{execv, getpid, pivot_root},
+    unistd::{execv, getpid},
 };
 
 use flate2::read::GzDecoder;
