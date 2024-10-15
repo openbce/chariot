@@ -37,6 +37,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .try_init()?;
 
     let options = cfg::ChariotOptions::parse();
+    let cxt = cfg::Context::from(&options);
+    tracing::debug!("The work directly is <{}>", cxt.work_dir());
 
     match options.command {
         cfg::Commands::Runp => {
@@ -46,7 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             cmd::start::run().await?;
         }
         cfg::Commands::Runc { file } => {
-            cmd::runc::run(file).await?;
+            cmd::runc::run(cxt, file).await?;
         }
     }
 

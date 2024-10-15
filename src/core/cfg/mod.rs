@@ -15,23 +15,53 @@ use clap::{Parser, Subcommand};
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Run a container directly
+    /// Run a container directly.
     Runc {
-        /// The yaml file of container to run
+        /// The yaml file of container to run.
         #[arg(short, long)]
         file: String,
     },
 
-    /// Run a Pod directly
+    /// Run a Pod directly.
     Runp,
 
-    /// Start a CRI service
+    /// Start a CRI service.
     Start,
 }
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct ChariotOptions {
+    /// The work directory of Chariot.
+    #[arg(short, long, default_value = "/opt/chariot")]
+    pub work_dir: String,
     #[command(subcommand)]
     pub command: Commands,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct Context {
+    pub work_dir: String,
+}
+
+impl From<&ChariotOptions> for Context {
+    fn from(o: &ChariotOptions) -> Self {
+        Self {
+            work_dir: o.work_dir.clone(),
+        }
+    }
+}
+
+impl Context {
+    pub fn work_dir(&self) -> String {
+        self.work_dir.clone()
+    }
+
+    pub fn image_dir(&self) -> String {
+        format!("{}/images", self.work_dir)
+    }
+
+    pub fn container_dir(&self) -> String {
+        format!("{}/containers", self.work_dir)
+    }
 }

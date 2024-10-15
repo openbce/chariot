@@ -24,9 +24,10 @@ use nix::{
 use flate2::read::GzDecoder;
 use oci_spec::image::ImageManifest;
 
+use crate::cfg;
 use chariot::apis::{ChariotResult, Container};
 
-pub async fn run(file: String) -> ChariotResult<()> {
+pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     let yaml = fs::read_to_string(file)?;
     let container: Container = serde_yaml::from_str(&yaml)?;
 
@@ -41,12 +42,12 @@ pub async fn run(file: String) -> ChariotResult<()> {
 
     let pid = unsafe {
         nix::sched::clone(
-            Box::new(|| match run_container(container.clone()) {
+            Box::new(|| match run_container(cxt.clone(), container.clone()) {
                 Ok(()) => 0,
                 Err(e) => {
                     tracing::error!("Failed to run container: {e}");
                     -1
-                },
+                }
             }),
             &mut stack,
             flags,
@@ -63,21 +64,21 @@ pub async fn run(file: String) -> ChariotResult<()> {
     Ok(())
 }
 
-fn run_container(container: Container) -> ChariotResult<()> {
+fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     tracing::debug!("Run sandbox <{}> as <{}>.", container.name, getpid());
 
     // TODO: get the CHARIOT_HOME from configure file.
-    let manifest_path = format!("{}/manifest.json", container.image);
+    let manifest_path = format!("{}/{}/manifest.json", cxt.image_dir(), container.image);
     tracing::debug!("Loading image manifest <{}>.", manifest_path);
     let image_manifest = ImageManifest::from_file(manifest_path)?;
 
     for layer in image_manifest.layers() {
         // TODO: detect mediaType and select unpack tools accordingly.
-        let layer_path = format!("{}/{}", container.image, layer.digest().digest());
+        let layer_path = format!("{}/{}/{}", cxt.image_dir(), container.image, layer.digest().digest());
         let tar_gz = fs::File::open(layer_path)?;
         let tar = GzDecoder::new(tar_gz);
         let mut archive = tar::Archive::new(tar);
-        archive.unpack(format!("/opt/chariot/containers/{}", container.name))?;
+        archive.unpack(format!("{}/{}", cxt.container_dir(), container.name))?;
     }
 
     // TODO: setup environment for the container, e.g. pivot_root
