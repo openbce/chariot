@@ -15,11 +15,12 @@ use std::ffi::CString;
 use std::fs;
 
 use nix::{
+    fcntl::{open, OFlag},
     libc,
     mount::{mount, MsFlags},
     sched::CloneFlags,
-    sys::wait::wait,
-    unistd::{chdir, execv, getpid, pivot_root},
+    sys::{stat::Mode, wait::wait},
+    unistd::{chdir, dup2, execv, getpid, pivot_root},
 };
 
 use flate2::read::GzDecoder;
@@ -73,17 +74,15 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     tracing::debug!("Loading image manifest <{}>.", manifest_path);
     let image_manifest = ImageManifest::from_file(manifest_path)?;
 
-    let rootfs = format!("{}/{}", cxt.container_dir(), container.name);
+    let container_root = format!("{}/{}", cxt.container_dir(), container.name);
+    let logfile = format!("{}/{}.log", container_root, container.name);
+    let rootfs = format!("{}/rootfs", container_root);
+    let imagefs = format!("{}/{}", cxt.image_dir(), container.name);
     let oldfs = format!("{}/.pivot_root", rootfs);
 
     for layer in image_manifest.layers() {
         // TODO: detect mediaType and select unpack tools accordingly.
-        let layer_path = format!(
-            "{}/{}/{}",
-            cxt.image_dir(),
-            container.image,
-            layer.digest().digest()
-        );
+        let layer_path = format!("{}/{}", imagefs, layer.digest().digest());
         let tar_gz = fs::File::open(layer_path)?;
         let tar = GzDecoder::new(tar_gz);
         let mut archive = tar::Archive::new(tar);
@@ -93,6 +92,16 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // Change to rootfs.
     fs::create_dir_all(&oldfs)?;
     tracing::debug!("Change root to <{}>, and the old fs is <{}>", rootfs, oldfs);
+
+    //Re-direct the stdout/stderr to log file.
+    let log = open(
+        logfile.as_str(),
+        OFlag::empty().union(OFlag::O_CREAT).union(OFlag::O_RDWR),
+        Mode::from_bits(0755).unwrap(),
+    )?;
+    tracing::debug!("Dup container stdout to log file.");
+    dup2(log, 1)?;
+    dup2(log, 2)?;
 
     // Ensure that 'new_root' and its parent mount don't have
     // shared propagation (which would cause pivot_root() to
@@ -124,10 +133,6 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
 
     // Change working directory to '/'.
     chdir("/")?;
-    tracing::debug!(
-        "Change working directory to </>, and execv <{}>",
-        container.entrypoint
-    );
 
     // execute `container entrypoint`
     let cmd = CString::new(container.entrypoint.as_bytes())?;
