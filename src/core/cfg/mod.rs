@@ -32,6 +32,16 @@ pub enum Commands {
         pod: Option<String>,
     },
 
+    /// Print the log of a container.
+    Log {
+        /// The name of conatiner.
+        #[arg(short, long)]
+        container: Option<String>,
+        /// The name of pod.
+        #[arg(short, long)]
+        pod: Option<String>,
+    },
+
     /// Run a Pod directly.
     Runp,
 
@@ -67,11 +77,26 @@ impl Context {
         self.work_dir.clone()
     }
 
-    pub fn image_dir(&self) -> String {
-        format!("{}/images", self.work_dir)
+    pub fn image_dir(&self, image: &str) -> String {
+        format!("{}/images/{}", self.work_dir, image)
     }
 
-    pub fn container_dir(&self) -> String {
-        format!("{}/containers", self.work_dir)
+    pub fn image_manifest(&self, image: &str) -> String {
+        format!("{}/images/{}/manifest.json", self.work_dir, image)
+    }
+
+    pub fn container_dir(&self, container: &str) -> String {
+        format!("{}/containers/{}", self.work_dir, container)
+    }
+
+    pub fn container_rootfs(&self, container: &str) -> String {
+        format!("{}/containers/{}/rootfs", self.work_dir, container)
+    }
+
+    pub fn container_log(&self, container: &str) -> String {
+        format!(
+            "{}/containers/{}/{}.log",
+            self.work_dir, container, container
+        )
     }
 }

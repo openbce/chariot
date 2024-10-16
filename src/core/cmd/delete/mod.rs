@@ -22,7 +22,7 @@ pub async fn run(
     _pod: Option<String>,
 ) -> apis::ChariotResult<()> {
     if let Some(container) = container {
-        let container_root = format!("{}/{}", cxt.container_dir(), container);
+        let container_root = cxt.container_dir(&container);
         fs::remove_dir_all(&container_root)?;
         tracing::debug!("The container <{}> was cleared", container_root);
     }

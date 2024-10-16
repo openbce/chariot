@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr, CString};
 use std::fs;
 
 use nix::{
@@ -19,7 +19,10 @@ use nix::{
     libc,
     mount::{mount, umount2, MntFlags, MsFlags},
     sched::CloneFlags,
-    sys::{stat::Mode, wait::{wait, WaitStatus}},
+    sys::{
+        stat::Mode,
+        wait::{wait, WaitStatus},
+    },
     unistd::{chdir, dup2, execve, getpid, getuid, pivot_root},
 };
 
@@ -35,13 +38,12 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
 
     tracing::debug!("Parent pid is <{}>.", getpid());
 
-    let manifest_path = format!("{}/{}/manifest.json", cxt.image_dir(), container.image);
+    let manifest_path = cxt.image_manifest(&container.image);
     tracing::debug!("Loading image manifest <{}>.", manifest_path);
     let image_manifest = ImageManifest::from_file(manifest_path)?;
 
-    let container_root = format!("{}/{}", cxt.container_dir(), container.name);
-    let rootfs = format!("{}/rootfs", container_root);
-    let imagefs = format!("{}/{}", cxt.image_dir(), container.name);
+    let rootfs = cxt.container_rootfs(&container.name);
+    let imagefs = cxt.image_dir(&container.name);
 
     for layer in image_manifest.layers() {
         // TODO: detect mediaType and select unpack tools accordingly.
@@ -80,13 +82,17 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     let status = wait()?;
     match status {
         WaitStatus::Exited(pid, rc) => {
-            tracing::debug!("The container <{}> was exited in <{}>", pid, rc);
+            if rc == 0 {
+                tracing::info!("The container <{}> was exited successfully.", pid);    
+            } else {
+                tracing::error!("The container <{}> was exited in <{}>.", pid, rc);
+            }
         }
         WaitStatus::Signaled(pid, sig, _) => {
-            tracing::debug!("The container <{}> got a signal <{}>", pid, sig);
+            tracing::info!("The container <{}> got a signal <{}>.", pid, sig);
         }
         WaitStatus::Stopped(pid, sig) => {
-            tracing::debug!("The container <{}> was stopped by signal <{}>", pid, sig);
+            tracing::info!("The container <{}> was stopped by signal <{}>.", pid, sig);
         }
         _ => {}
     }
@@ -101,10 +107,9 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
         getpid(),
         getuid()
     );
-    let container_root = format!("{}/{}", cxt.container_dir(), container.name);
 
     // Re-direct the stdout/stderr to log file.
-    let logfile = format!("{}/{}.log", container_root, container.name);
+    let logfile = cxt.container_log(&container.name);
     let log = open(
         logfile.as_str(),
         OFlag::empty().union(OFlag::O_CREAT).union(OFlag::O_RDWR),
@@ -112,7 +117,7 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     )?;
 
     // Create rootfs.
-    let rootfs = format!("{}/rootfs", container_root);
+    let rootfs = cxt.container_rootfs(&container.name);
     tracing::debug!("Change root to <{}>", rootfs);
 
     // Ensure that 'new_root' and its parent mount don't have

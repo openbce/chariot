@@ -11,8 +11,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-pub mod delete;
-pub mod log;
-pub mod runc;
-pub mod runp;
-pub mod start;
+use std::fs;
+
+use crate::cfg;
+use chariot::apis;
+
+pub async fn run(
+    cxt: cfg::Context,
+    container: Option<String>,
+    _pod: Option<String>,
+) -> apis::ChariotResult<()> {
+    if let Some(container) = container {
+        // TODO: print the log line by line.
+        let log = fs::read_to_string(cxt.container_log(&container))?;
+        print!("{log}");
+    }
+
+    Ok(())
+}
