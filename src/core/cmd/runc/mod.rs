@@ -83,7 +83,7 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     match status {
         WaitStatus::Exited(pid, rc) => {
             if rc == 0 {
-                tracing::info!("The container <{}> was exited successfully.", pid);    
+                tracing::info!("The container <{}> was exited successfully.", pid);
             } else {
                 tracing::error!("The container <{}> was exited in <{}>.", pid, rc);
             }
@@ -116,6 +116,21 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
         Mode::from_bits(0o755).unwrap(),
     )?;
 
+    // Change the root of container by pivot_root.
+    change_root(cxt.clone(), container.clone())?;
+
+    tracing::debug!("Redirect container stdout/stderr to log file.");
+    dup2(log, 1)?;
+    dup2(log, 2)?;
+
+    // execute `container entrypoint`
+    let cmd = CString::new(container.entrypoint.as_bytes())?;
+    execve::<&CStr, &CStr>(cmd.as_c_str(), &[cmd.as_c_str()], &[])?;
+
+    Ok(())
+}
+
+fn change_root(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // Create rootfs.
     let rootfs = cxt.container_rootfs(&container.name);
     tracing::debug!("Change root to <{}>", rootfs);
@@ -157,14 +172,6 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
 
     // Change working directory to '/'.
     chdir("/")?;
-
-    tracing::debug!("Redirect container stdout/stderr to log file.");
-    dup2(log, 1)?;
-    dup2(log, 2)?;
-
-    // execute `container entrypoint`
-    let cmd = CString::new(container.entrypoint.as_bytes())?;
-    let _ = execve::<&CStr, &CStr>(cmd.as_c_str(), &[cmd.as_c_str()], &[])?;
 
     Ok(())
 }
