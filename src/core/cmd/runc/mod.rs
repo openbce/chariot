@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::fs;
 
 use nix::{
@@ -19,8 +19,8 @@ use nix::{
     libc,
     mount::{mount, umount2, MntFlags, MsFlags},
     sched::CloneFlags,
-    sys::{stat::Mode, wait::wait},
-    unistd::{chdir, dup2, execv, getpid, getuid, pivot_root},
+    sys::{stat::Mode, wait::{wait, WaitStatus}},
+    unistd::{chdir, dup2, execve, getpid, getuid, pivot_root},
 };
 
 use flate2::read::GzDecoder;
@@ -78,7 +78,18 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
 
     tracing::debug!("Waiting for the child process <{pid}> to finish.");
     let status = wait()?;
-    tracing::debug!("The container <{}> was exited", status.pid().unwrap());
+    match status {
+        WaitStatus::Exited(pid, rc) => {
+            tracing::debug!("The container <{}> was exited in <{}>", pid, rc);
+        }
+        WaitStatus::Signaled(pid, sig, _) => {
+            tracing::debug!("The container <{}> got a signal <{}>", pid, sig);
+        }
+        WaitStatus::Stopped(pid, sig) => {
+            tracing::debug!("The container <{}> was stopped by signal <{}>", pid, sig);
+        }
+        _ => {}
+    }
 
     Ok(())
 }
@@ -139,28 +150,6 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     )?;
     umount2("/", MntFlags::MNT_DETACH)?;
 
-    tracing::debug!("Try to mout /proc by <{}>", getuid());
-    mount(
-        Some("proc"),
-        "/proc",
-        Some("proc"),
-        MsFlags::empty()
-            .union(MsFlags::MS_NOEXEC)
-            .union(MsFlags::MS_NODEV)
-            .union(MsFlags::MS_NOSUID),
-        None::<&str>,
-    )?;
-    tracing::debug!("Try to mout /dev by <{}>", getuid());
-    mount(
-        Some("tmpfs"),
-        "/dev",
-        Some("tmpfs"),
-        MsFlags::empty()
-            .union(MsFlags::MS_STRICTATIME)
-            .union(MsFlags::MS_NOSUID),
-        Some("mode=0755"),
-    )?;
-
     // Change working directory to '/'.
     chdir("/")?;
 
@@ -170,7 +159,7 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
 
     // execute `container entrypoint`
     let cmd = CString::new(container.entrypoint.as_bytes())?;
-    let _ = execv(cmd.as_c_str(), &[cmd.as_c_str()]);
+    let _ = execve::<&CStr, &CStr>(cmd.as_c_str(), &[cmd.as_c_str()], &[])?;
 
     Ok(())
 }

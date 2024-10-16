@@ -43,6 +43,7 @@ nix = { version = "0.29", features = [
     "signal",
     "mount",
     "user",
+    "process",
 ] }
 oci-spec = "0.7.0"
 flate2 = "1.0"
