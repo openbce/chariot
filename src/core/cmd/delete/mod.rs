@@ -13,8 +13,8 @@ limitations under the License.
 
 use std::fs;
 
-use chariot::apis;
 use crate::cfg;
+use chariot::apis;
 
 pub async fn run(
     cxt: cfg::Context,

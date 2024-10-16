@@ -127,9 +127,9 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
         None::<&str>,
     )?;
 
-    let _ = pivot_root(rootfs.as_str(), rootfs.as_str())?;
+    pivot_root(rootfs.as_str(), rootfs.as_str())?;
 
-    tracing::debug!("Detach the rootfs from parent.");
+    tracing::debug!("Detach the rootfs from parent system.");
     mount(
         None::<&str>,
         "/",
@@ -139,7 +139,7 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     )?;
     umount2("/", MntFlags::MNT_DETACH)?;
 
-    tracing::debug!("Try to mout /proc, /dev by <{}>", getuid());
+    tracing::debug!("Try to mout /proc by <{}>", getuid());
     mount(
         Some("proc"),
         "/proc",
@@ -150,6 +150,7 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
             .union(MsFlags::MS_NOSUID),
         None::<&str>,
     )?;
+    tracing::debug!("Try to mout /dev by <{}>", getuid());
     mount(
         Some("tmpfs"),
         "/dev",
@@ -157,7 +158,7 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
         MsFlags::empty()
             .union(MsFlags::MS_STRICTATIME)
             .union(MsFlags::MS_NOSUID),
-        Some("mode=755"),
+        Some("mode=0755"),
     )?;
 
     // Change working directory to '/'.
