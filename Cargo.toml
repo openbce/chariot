@@ -16,14 +16,17 @@ path = "src/shim/main.rs"
 clap = { version = "4", features = ["derive", "env"] }
 tokio = { version = "1", features = ["full", "tracing"] }
 tonic = { version = "0.11", features = ["tls"] }
-tokio-stream = { version="0.1", features=["net"] }
-futures="0.3"
+tokio-stream = { version = "0.1", features = ["net"] }
+futures = "0.3"
 tower = "0.4"
 prost = "0.12"
 prost-types = "0.12"
 
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "local-time"] }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "local-time",
+] }
 thiserror = "1"
 stdng = "0.1"
 async-trait = "0.1"
@@ -33,7 +36,13 @@ serde_json = "1.0"
 serde_yaml = "0.9"
 toml = "0.8"
 
-nix = { version = "0.29" , features = ["sched", "fs", "signal", "mount"]}
+nix = { version = "0.29", features = [
+    "sched",
+    "fs",
+    "signal",
+    "mount",
+    "user",
+] }
 oci-spec = "0.7.0"
 flate2 = "1.0"
 tar = "0.4"

@@ -11,7 +11,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-pub mod delete;
-pub mod runc;
-pub mod runp;
-pub mod start;
+use std::fs;
+
+use chariot::apis;
+use crate::cfg;
+
+pub async fn run(
+    cxt: cfg::Context,
+    container: Option<String>,
+    _pod: Option<String>,
+) -> apis::ChariotResult<()> {
+    if let Some(container) = container {
+        let container_root = format!("{}/{}", cxt.container_dir(), container);
+        fs::remove_dir_all(&container_root)?;
+        tracing::debug!("The container <{}> was cleared", container_root);
+    }
+
+    Ok(())
+}

@@ -22,6 +22,16 @@ pub enum Commands {
         file: String,
     },
 
+    /// Delete a container or sandbox.
+    Delete {
+        /// The name of conatiner to delete.
+        #[arg(short, long)]
+        container: Option<String>,
+        /// The name of pod to delete.
+        #[arg(short, long)]
+        pod: Option<String>,
+    },
+
     /// Run a Pod directly.
     Runp,
 

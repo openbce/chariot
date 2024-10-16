@@ -50,6 +50,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         cfg::Commands::Runc { file } => {
             cmd::runc::run(cxt, file).await?;
         }
+        cfg::Commands::Delete { container, pod } => {
+            cmd::delete::run(cxt, container, pod).await?;
+        }
     }
 
     Ok(())
