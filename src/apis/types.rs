@@ -22,7 +22,7 @@ pub type ChariotResult<T> = Result<T, Box<dyn Error>>;
 pub struct Sandbox {
     pub name: String,
     pub image: String,
-    pub entrypoint: String,
+    pub entrypoint: Vec<String>,
     pub containers: Vec<Container>,
 }
 
@@ -30,7 +30,7 @@ pub struct Sandbox {
 pub struct Container {
     pub name: String,
     pub image: String,
-    pub entrypoint: String,
+    pub entrypoint: Vec<String>,
 }
 
 #[derive(thiserror::Error, Debug)]

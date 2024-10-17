@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::ffi::{CStr, CString};
+use std::ffi::{CString};
 use std::fs;
 use std::io::{Read, Write};
 use std::{thread, time};
@@ -176,13 +176,18 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // Setup fstab, e.g. /proc, /dev.
     // setup_fstab(cxt.clone(), container.clone())?;
 
-    tracing::debug!("Redirect container stdout/stderr to log file.");
-    dup2(log, 1)?;
-    dup2(log, 2)?;
+    let cmd = CString::new(container.entrypoint[0].as_bytes())?;
+    let args = container
+        .entrypoint
+        .iter()
+        .filter_map(|c| CString::new(c.as_bytes()).ok())
+        .collect::<Vec<_>>();
 
     // execute `container entrypoint`
-    let cmd = CString::new(container.entrypoint.as_bytes())?;
-    execve::<&CStr, &CStr>(cmd.as_c_str(), &[cmd.as_c_str()], &[])?;
+    tracing::debug!("Redirect container stdout/stderr to log file, and execve the entrypoint.");
+    dup2(log, 1)?;
+    dup2(log, 2)?;
+    execve::<CString, CString>(&cmd, args.as_slice(), &[])?;
 
     Ok(())
 }
