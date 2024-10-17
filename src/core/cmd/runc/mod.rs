@@ -11,9 +11,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-use std::ffi::{CString};
+use std::ffi::CString;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::{thread, time};
 
 use nix::{
@@ -25,7 +25,7 @@ use nix::{
         stat::Mode,
         wait::{wait, WaitStatus},
     },
-    unistd::{chdir, dup2, execve, getgid, getpid, getuid, pivot_root, Pid},
+    unistd::{chdir, dup2, execve, getgid, getpid, getuid, pivot_root, Gid, Pid, Uid},
 };
 
 use flate2::read::GzDecoder;
@@ -123,7 +123,8 @@ fn setup_user_mapping(pid: Pid) -> ChariotResult<()> {
     let mut file = fs::File::create(uid_map)?;
     file.write_all(mapping.as_bytes())?;
 
-    // Disable setgroups for unpriviledge user.
+    // Disable setgroups for unpriviledge user;
+    // otherwise, we can not setup group mapping.
     let setgroups = format!("/proc/{}/setgroups", pid);
     let mut file = fs::File::create(setgroups)?;
     file.write_all(b"deny")?;
@@ -142,20 +143,16 @@ fn setup_user_mapping(pid: Pid) -> ChariotResult<()> {
 fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // Waiting for user mapping ready.
     let ten_millis = time::Duration::from_millis(10);
-    let mut gid_map = fs::File::open("/proc/self/gid_map")?;
-    let mut mapping = String::new();
-
     loop {
-        gid_map.read_to_string(&mut mapping)?;
-        if mapping.trim().len() > 0 {
+        if getgid() == Gid::from(0) && getuid() == Uid::from(0) {
             break;
         }
-
         thread::sleep(ten_millis);
     }
 
+    // Start to run container
     tracing::debug!(
-        "Run sandbox <{}> in <{}> as <{}:{}>.",
+        "Run container <{}> in <{}> as <{}:{}>.",
         container.name,
         getpid(),
         getuid(),
@@ -172,9 +169,6 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
 
     // Change the root of container by pivot_root.
     change_root(cxt.clone(), container.clone())?;
-
-    // Setup fstab, e.g. /proc, /dev.
-    // setup_fstab(cxt.clone(), container.clone())?;
 
     let cmd = CString::new(container.entrypoint[0].as_bytes())?;
     let args = container
@@ -247,6 +241,9 @@ fn change_root(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     )?;
 
     pivot_root(rootfs.as_str(), rootfs.as_str())?;
+
+    // Setup fstab, e.g. /proc, /dev, before unmount parent FS.
+    setup_fstab(cxt.clone(), container.clone())?;
 
     tracing::debug!("Detach the rootfs from parent system.");
     mount(
