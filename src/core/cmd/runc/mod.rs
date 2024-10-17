@@ -13,6 +13,8 @@ limitations under the License.
 
 use std::ffi::{CStr, CString};
 use std::fs;
+use std::io::{Read, Write};
+use std::{thread, time};
 
 use nix::{
     fcntl::{open, OFlag},
@@ -23,7 +25,7 @@ use nix::{
         stat::Mode,
         wait::{wait, WaitStatus},
     },
-    unistd::{chdir, dup2, execve, getpid, getuid, pivot_root},
+    unistd::{chdir, dup2, execve, getgid, getpid, getuid, pivot_root, Pid},
 };
 
 use flate2::read::GzDecoder;
@@ -58,6 +60,8 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     let flags = CloneFlags::empty()
         .union(CloneFlags::CLONE_NEWUSER)
         .union(CloneFlags::CLONE_NEWNET)
+        .union(CloneFlags::CLONE_NEWUTS)
+        .union(CloneFlags::CLONE_NEWIPC)
         .union(CloneFlags::CLONE_NEWPID)
         .union(CloneFlags::CLONE_NEWNS);
 
@@ -77,6 +81,9 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
             Some(libc::SIGCHLD),
         )?
     };
+
+    // Setup user/group mapping for the container.
+    setup_user_mapping(pid)?;
 
     tracing::debug!("Waiting for the child process <{pid}> to finish.");
     let status = wait()?;
@@ -100,12 +107,59 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     Ok(())
 }
 
-fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
+fn setup_user_mapping(pid: Pid) -> ChariotResult<()> {
     tracing::debug!(
-        "Run sandbox <{}> in <{}> as <{}>.",
+        "Run chariot in <{}> as <{}:{}>.",
+        getpid(),
+        getuid(),
+        getgid()
+    );
+
+    // Setup user mapping.
+    let uid_map = format!("/proc/{}/uid_map", pid);
+    let mapping = format!("0 {} 1", getuid());
+    tracing::debug!("setup user mapping: {uid_map}, {mapping}");
+
+    let mut file = fs::File::create(uid_map)?;
+    file.write_all(mapping.as_bytes())?;
+
+    // Disable setgroups for unpriviledge user.
+    let setgroups = format!("/proc/{}/setgroups", pid);
+    let mut file = fs::File::create(setgroups)?;
+    file.write_all(b"deny")?;
+
+    // Setup group mapping.
+    let gid_map = format!("/proc/{}/gid_map", pid);
+    let mapping = format!("0 {} 1", getgid());
+    tracing::debug!("setup group mapping: {gid_map}, {mapping}");
+
+    let mut file = fs::File::create(gid_map)?;
+    file.write_all(mapping.as_bytes())?;
+
+    Ok(())
+}
+
+fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
+    // Waiting for user mapping ready.
+    let ten_millis = time::Duration::from_millis(10);
+    let mut gid_map = fs::File::open("/proc/self/gid_map")?;
+    let mut mapping = String::new();
+
+    loop {
+        gid_map.read_to_string(&mut mapping)?;
+        if mapping.trim().len() > 0 {
+            break;
+        }
+
+        thread::sleep(ten_millis);
+    }
+
+    tracing::debug!(
+        "Run sandbox <{}> in <{}> as <{}:{}>.",
         container.name,
         getpid(),
-        getuid()
+        getuid(),
+        getgid(),
     );
 
     // Re-direct the stdout/stderr to log file.
@@ -119,6 +173,9 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // Change the root of container by pivot_root.
     change_root(cxt.clone(), container.clone())?;
 
+    // Setup fstab, e.g. /proc, /dev.
+    // setup_fstab(cxt.clone(), container.clone())?;
+
     tracing::debug!("Redirect container stdout/stderr to log file.");
     dup2(log, 1)?;
     dup2(log, 2)?;
@@ -126,6 +183,32 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     // execute `container entrypoint`
     let cmd = CString::new(container.entrypoint.as_bytes())?;
     execve::<&CStr, &CStr>(cmd.as_c_str(), &[cmd.as_c_str()], &[])?;
+
+    Ok(())
+}
+
+fn setup_fstab(_: cfg::Context, _: Container) -> ChariotResult<()> {
+    tracing::debug!("Try to mout /proc by <{}>", getuid());
+    mount(
+        Some("proc"),
+        "/proc",
+        Some("proc"),
+        MsFlags::empty()
+            .union(MsFlags::MS_NOEXEC)
+            .union(MsFlags::MS_NODEV)
+            .union(MsFlags::MS_NOSUID),
+        None::<&str>,
+    )?;
+    tracing::debug!("Try to mout /dev by <{}>", getuid());
+    mount(
+        Some("tmpfs"),
+        "/dev",
+        Some("tmpfs"),
+        MsFlags::empty()
+            .union(MsFlags::MS_STRICTATIME)
+            .union(MsFlags::MS_NOSUID),
+        Some("mode=0755"),
+    )?;
 
     Ok(())
 }

@@ -53,7 +53,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         cfg::Commands::Delete { container, pod } => {
             cmd::delete::run(cxt, container, pod).await?;
         }
-
         cfg::Commands::Log { container, pod } => {
             cmd::log::run(cxt, container, pod).await?;
         }
