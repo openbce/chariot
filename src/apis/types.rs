@@ -19,10 +19,8 @@ use serde::{Deserialize, Serialize};
 pub type ChariotResult<T> = Result<T, Box<dyn Error>>;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
-pub struct Sandbox {
+pub struct Pod {
     pub name: String,
-    pub image: String,
-    pub entrypoint: Vec<String>,
     pub containers: Vec<Container>,
 }
 
@@ -30,7 +28,14 @@ pub struct Sandbox {
 pub struct Container {
     pub name: String,
     pub image: String,
+    pub resources: Option<Resources>,
     pub entrypoint: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+pub struct Resources {
+    pub cpu: Option<String>,
+    pub mem: Option<String>,
 }
 
 #[derive(thiserror::Error, Debug)]

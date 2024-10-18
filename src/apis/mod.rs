@@ -13,4 +13,4 @@ limitations under the License.
 
 mod types;
 
-pub use types::{ChariotError, ChariotResult, Container, Sandbox};
+pub use types::{ChariotError, ChariotResult, Container, Pod};

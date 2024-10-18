@@ -12,6 +12,7 @@ limitations under the License.
 */
 
 mod cfg;
+mod cgroup;
 mod cmd;
 
 use std::error::Error;
@@ -39,6 +40,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let options = cfg::ChariotOptions::parse();
     let cxt = cfg::Context::from(&options);
     tracing::debug!("The work directly is <{}>", cxt.work_dir());
+
+    cgroup::setup(&cxt)?;
 
     match options.command {
         cfg::Commands::Runp => {

@@ -16,23 +16,24 @@ use std::fs;
 use std::io::Write;
 use std::{thread, time};
 
+use flate2::read::GzDecoder;
 use nix::{
-    fcntl::{open, OFlag},
+    // fcntl::{open, OFlag},
     libc,
     mount::{mount, umount2, MntFlags, MsFlags},
     sched::CloneFlags,
     sys::{
-        stat::Mode,
+        // stat::Mode,
         wait::{wait, WaitStatus},
     },
-    unistd::{chdir, dup2, execve, getgid, getpid, getuid, pivot_root, Gid, Pid, Uid},
+    unistd::{chdir, execve, getgid, getpid, getuid, pivot_root, Gid, Pid, Uid},
 };
-
-use flate2::read::GzDecoder;
 use oci_spec::image::ImageManifest;
 
-use crate::cfg;
 use chariot::apis::{ChariotResult, Container};
+
+use crate::cfg;
+use crate::cgroup;
 
 pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
     let yaml = fs::read_to_string(file)?;
@@ -56,6 +57,7 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
         archive.unpack(&rootfs)?;
     }
 
+    tracing::debug!("Setup and run container.");
     let mut stack = [0u8; 1024 * 1024];
     let flags = CloneFlags::empty()
         .union(CloneFlags::CLONE_NEWUSER)
@@ -82,6 +84,8 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
         )?
     };
 
+    cgroup::add_container(&cxt, &container, pid)?;
+
     // Setup user/group mapping for the container.
     setup_user_mapping(pid)?;
 
@@ -103,6 +107,8 @@ pub async fn run(cxt: cfg::Context, file: String) -> ChariotResult<()> {
         }
         _ => {}
     }
+
+    cgroup::remove_container(&cxt, &container)?;
 
     Ok(())
 }
@@ -160,12 +166,12 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
     );
 
     // Re-direct the stdout/stderr to log file.
-    let logfile = cxt.container_log(&container.name);
-    let log = open(
-        logfile.as_str(),
-        OFlag::empty().union(OFlag::O_CREAT).union(OFlag::O_RDWR),
-        Mode::from_bits(0o755).unwrap(),
-    )?;
+    // let logfile = cxt.container_log(&container.name);
+    // let log = open(
+    //     logfile.as_str(),
+    //     OFlag::empty().union(OFlag::O_CREAT).union(OFlag::O_RDWR),
+    //     Mode::from_bits(0o755).unwrap(),
+    // )?;
 
     // Change the root of container by pivot_root.
     change_root(cxt.clone(), container.clone())?;
@@ -179,8 +185,8 @@ fn run_container(cxt: cfg::Context, container: Container) -> ChariotResult<()> {
 
     // execute `container entrypoint`
     tracing::debug!("Redirect container stdout/stderr to log file, and execve the entrypoint.");
-    dup2(log, 1)?;
-    dup2(log, 2)?;
+    // dup2(log, 1)?;
+    // dup2(log, 2)?;
     execve::<CString, CString>(&cmd, args.as_slice(), &[])?;
 
     Ok(())

@@ -77,26 +77,32 @@ impl Context {
         self.work_dir.clone()
     }
 
+    pub fn cgroup_root(&self) -> String {
+        // format!("{}/cgroup", self.work_dir)
+        "/sys/fs/cgroup/chariot".to_string()
+    }
+
+    pub fn cgroup_dir(&self, container: &str) -> String {
+        format!("{}/{container}", self.cgroup_root())
+    }
+
     pub fn image_dir(&self, image: &str) -> String {
-        format!("{}/images/{}", self.work_dir, image)
+        format!("{}/images/{image}", self.work_dir)
     }
 
     pub fn image_manifest(&self, image: &str) -> String {
-        format!("{}/images/{}/manifest.json", self.work_dir, image)
+        format!("{}/images/{image}/manifest.json", self.work_dir)
     }
 
     pub fn container_dir(&self, container: &str) -> String {
-        format!("{}/containers/{}", self.work_dir, container)
+        format!("{}/containers/{container}", self.work_dir)
     }
 
     pub fn container_rootfs(&self, container: &str) -> String {
-        format!("{}/containers/{}/rootfs", self.work_dir, container)
+        format!("{}/containers/{container}/rootfs", self.work_dir)
     }
 
     pub fn container_log(&self, container: &str) -> String {
-        format!(
-            "{}/containers/{}/{}.log",
-            self.work_dir, container, container
-        )
+        format!("{}/containers/{container}/{container}.log", self.work_dir,)
     }
 }
