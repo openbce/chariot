@@ -48,6 +48,8 @@ pub enum ChariotError {
     IO(String),
     #[error("{0}")]
     Json(String),
+    #[error("{0}")]
+    Internal(String),
 }
 
 impl From<io::Error> for ChariotError {

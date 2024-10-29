@@ -14,6 +14,8 @@ limitations under the License.
 mod cfg;
 mod cgroup;
 mod cmd;
+mod netlink;
+mod network;
 
 use std::error::Error;
 
